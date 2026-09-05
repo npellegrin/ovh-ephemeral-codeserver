@@ -1,0 +1,3 @@
+ovh_project_id      = "YOUR_PROJECT_ID"
+region              = "GRA"
+ssh_public_key_path = "~/.ssh/id_ed25519.pub"
