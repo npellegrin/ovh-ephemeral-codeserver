@@ -1,7 +1,12 @@
 # AGENTS.md — terraform-bootstrap
 
-Persistent resources only: Object Storage buckets, SSH keypair, network,
-subnet, router. Applied once, rarely modified.
+Persistent resources only: Object Storage buckets, SSH keypair. Applied
+once, rarely modified.
+
+No network/subnet/router here on purpose: a router with an external gateway
+provisions a billed OVH "Gateway" that would run continuously if it lived in
+this always-on stack. terraform-ephemeral attaches instances directly to
+Ext-Net instead, see terraform-ephemeral/compute.tf.
 
 ## Rules
 

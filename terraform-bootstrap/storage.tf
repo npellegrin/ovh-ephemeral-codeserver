@@ -7,4 +7,8 @@ resource "openstack_objectstorage_container_v1" "backup_bucket" {
   metadata = {
     purpose = "dev-environment-backups"
   }
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }

@@ -1,4 +1,16 @@
-# Consumed by terraform-ephemeral/terraform.tfvars and ansible/group_vars/vault.yml.
+# Consumed automatically: `make` reads these into terraform-ephemeral's
+# generated.tfvars (see the Makefile) and ansible/group_vars/vault.yml
+# still needs the s3/backup_* ones copied in by hand (see README).
+
+output "ovh_project_id" {
+  description = "Echoed back so terraform-ephemeral doesn't need it typed twice."
+  value       = var.ovh_project_id
+}
+
+output "compute_region" {
+  description = "Echoed back so terraform-ephemeral stays in the same region."
+  value       = var.compute_region
+}
 
 output "s3_bucket_name" {
   description = "Backups bucket name. Copy into ansible/group_vars/vault.yml as s3_bucket_name."
@@ -22,16 +34,6 @@ output "backup_s3_secret_key" {
 }
 
 output "keypair_name" {
-  description = "Copy into terraform-ephemeral/terraform.tfvars as keypair_name."
+  description = "Read by `make` into terraform-ephemeral's generated.tfvars."
   value       = openstack_compute_keypair_v2.dev_keypair.name
-}
-
-output "network_id" {
-  description = "Copy into terraform-ephemeral/terraform.tfvars as network_id."
-  value       = openstack_networking_network_v2.dev_network.id
-}
-
-output "subnet_id" {
-  description = "Copy into terraform-ephemeral/terraform.tfvars as subnet_id."
-  value       = openstack_networking_subnet_v2.dev_subnet.id
 }
