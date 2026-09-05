@@ -7,8 +7,11 @@ group. Destroyed and recreated daily.
 
 - Instance size and disk size must remain configurable via variables, never
   hardcoded.
-- The security group is the first filtering layer; nftables (in Ansible) is
-  the second. Do not remove either layer without being asked.
+- `create_security_group` (security.tf) defaults to `false`: new/unverified
+  OVH accounts get a `security_group` quota of 0. Off, the instance uses
+  the project's built-in `default` group and nftables (Ansible) is the only
+  IP filter for HTTP/HTTPS; SSH stays open in nftables regardless (see
+  ansible/AGENTS.md). Don't assume the dedicated security group is active.
 - Any resource added here must be safe to destroy without data loss — if it
   holds state, it belongs in `terraform-bootstrap/` instead.
 - `ovh` provider is allowed here only for DNS record automation, nothing else.

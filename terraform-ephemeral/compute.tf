@@ -11,11 +11,12 @@ resource "openstack_blockstorage_volume_v3" "dev_volume" {
 }
 
 resource "openstack_compute_instance_v2" "dev_instance" {
-  region          = var.compute_region
-  name            = "${local.resource_prefix}-instance"
-  flavor_name     = var.instance_flavor
-  key_pair        = var.keypair_name
-  security_groups = [openstack_networking_secgroup_v2.dev_secgroup.name]
+  region      = var.compute_region
+  name        = "${local.resource_prefix}-instance"
+  flavor_name = var.instance_flavor
+  key_pair    = var.keypair_name
+  # "default" is the project's built-in group when create_security_group is off. Not a placeholder, that's its literal name.
+  security_groups = var.create_security_group ? [openstack_networking_secgroup_v2.dev_secgroup[0].name] : ["default"]
 
   block_device {
     uuid                  = data.openstack_images_image_v2.base_image.id

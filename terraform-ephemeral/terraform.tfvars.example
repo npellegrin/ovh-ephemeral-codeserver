@@ -1,10 +1,17 @@
 # ovh_project_id, compute_region, keypair_name are NOT here: `make`
 # generates them into generated.tfvars from terraform-bootstrap's outputs
-# on every run. See variables.tf.
+# on every run.
 
-instance_flavor     = "b3-8"
-instance_image      = "Debian 13"
-volume_size_gb      = 40
+instance_flavor = "b3-8"
+instance_image  = "Debian 13"
+volume_size_gb  = 40
+
+# By default OVH projects have a security_group quota of 0
+# so this stack defaults to not creating a security group.
+# Flip to true once your account's quota allows creating security groups.
+create_security_group = false
+
+# allowed_*_cidrs below only matter if you set create_security_group = true.
 allowed_ssh_cidrs   = ["YOUR_PUBLIC_IP/32"]
 allowed_https_cidrs = ["0.0.0.0/0"]
 allowed_http_cidrs  = ["0.0.0.0/0"]

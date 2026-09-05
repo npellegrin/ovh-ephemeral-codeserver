@@ -33,20 +33,26 @@ variable "volume_size_gb" {
   default     = 40
 }
 
+variable "create_security_group" {
+  description = "Create a dedicated OpenStack security group with allowed_*_cidrs rules below. Defaults to false: new/unverified OVH accounts get a security_group quota of 0. Flip to true once your account's quota allows creating security groups."
+  type        = bool
+  default     = false
+}
+
 variable "allowed_ssh_cidrs" {
-  description = "CIDR ranges allowed for SSH (your public IP, /32)"
+  description = "CIDR ranges allowed for SSH. Only used when create_security_group is true; leaving it empty then blocks SSH at the OpenStack layer entirely."
   type        = list(string)
-  default     = [] # Required: no open default is provided.
+  default     = []
 }
 
 variable "allowed_https_cidrs" {
-  description = "CIDR ranges allowed for HTTPS (can be broader than SSH)"
+  description = "CIDR ranges allowed for HTTPS. Only used when create_security_group is true."
   type        = list(string)
   default     = ["0.0.0.0/0"] # Public HTTPS by default; restrict if needed.
 }
 
 variable "allowed_http_cidrs" {
-  description = "CIDR ranges allowed for HTTP (can be broader than SSH)"
+  description = "CIDR ranges allowed for HTTP. Only used when create_security_group is true."
   type        = list(string)
   default     = ["0.0.0.0/0"] # Public HTTP by default; restrict if needed.
 }
