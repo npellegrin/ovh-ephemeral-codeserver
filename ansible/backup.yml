@@ -1,0 +1,52 @@
+---
+- name: Back up data to OVH S3 Object Storage
+  hosts: dev_servers
+  become: yes
+  vars_files:
+    - group_vars/vault.yml
+
+  vars:
+    backup_filename: "backup-{{ ansible_date_time.iso8601_basic_short }}.tar.gz"
+    backup_tmp_path: "/tmp/{{ backup_filename }}"
+
+  tasks:
+    - name: Install rclone
+      apt:
+        name: rclone
+        state: present
+
+    - name: Configure rclone for OVH Object Storage
+      copy:
+        dest: /root/.config/rclone/rclone.conf
+        content: |
+          [ovh-s3]
+          type = s3
+          provider = Other
+          access_key_id = {{ s3_access_key }}
+          secret_access_key = {{ s3_secret_key }}
+          endpoint = {{ s3_endpoint }}
+        mode: '0600'
+      no_log: true
+
+    - name: Create the backup archive
+      shell: >
+        tar
+        {% for exclude in backup_excludes %}--exclude='{{ exclude }}' {% endfor %}
+        -czf {{ backup_tmp_path }}
+        {% for path in backup_paths %}{{ path }} {% endfor %}
+      args:
+        warn: false
+
+    - name: Upload the archive to Object Storage
+      command: >
+        rclone copy {{ backup_tmp_path }} ovh-s3:{{ s3_bucket }}/
+        --s3-storage-class STANDARD
+
+    - name: Remove the local temporary archive
+      file:
+        path: "{{ backup_tmp_path }}"
+        state: absent
+
+    - name: Confirm the backup
+      debug:
+        msg: "Backup completed: {{ backup_filename }} uploaded to {{ s3_bucket }}"

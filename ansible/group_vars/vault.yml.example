@@ -1,0 +1,37 @@
+---
+# Copy to group_vars/vault.yml, fill in real values, then encrypt it:
+#   ansible-vault encrypt group_vars/vault.yml
+# group_vars/vault.yml itself is gitignored and must never be committed
+# unencrypted (see AGENTS.md: "Never write secrets in plaintext YAML").
+
+# --- OVH S3 Object Storage (secrets) ---
+s3_access_key: "CHANGEME"
+s3_secret_key: "CHANGEME"
+s3_endpoint: "https://s3.<region>.io.cloud.ovh.net"
+s3_bucket: "CHANGEME"
+
+# --- code-server (secret: the login password) ---
+code_server_user: "dev"
+code_server_port: 8080
+code_server_password: "CHANGEME"
+
+# --- nginx / Let's Encrypt ---
+domain_name: "dev.example.com"
+letsencrypt_email: "admin@example.com"
+
+# --- nftables ingress filtering (not secrets, kept here for simplicity) ---
+allowed_ssh_cidrs:
+  - "0.0.0.0/0"
+allowed_http_cidrs:
+  - "0.0.0.0/0"
+allowed_https_cidrs:
+  - "0.0.0.0/0"
+
+# --- backup / restore ---
+# Absolute paths tarred by backup.yml and, on restore, the only paths
+# safe_restore.sh.j2 is allowed to write back to the filesystem.
+backup_paths:
+  - "/home/{{ code_server_user }}"
+backup_excludes:
+  - "*/.cache"
+  - "*/node_modules"

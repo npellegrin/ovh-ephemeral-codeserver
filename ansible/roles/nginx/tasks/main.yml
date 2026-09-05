@@ -1,0 +1,49 @@
+---
+- name: Install Nginx and Certbot
+  apt:
+    name:
+      - nginx
+      - certbot
+      - python3-certbot-nginx
+    state: present
+
+- name: Remove the default configuration
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+
+- name: Configure the Nginx reverse proxy for code-server
+  template:
+    src: code-server.conf.j2
+    dest: /etc/nginx/sites-available/code-server.conf
+  notify: restart nginx
+
+- name: Enable the site
+  file:
+    src: /etc/nginx/sites-available/code-server.conf
+    dest: /etc/nginx/sites-enabled/code-server.conf
+    state: link
+  notify: restart nginx
+
+- name: Start Nginx (required for HTTP ACME validation)
+  systemd:
+    name: nginx
+    state: started
+    enabled: yes
+
+- name: Obtain the Let's Encrypt certificate
+  command: >
+    certbot --nginx
+    -d {{ domain_name }}
+    --non-interactive
+    --agree-tos
+    -m {{ letsencrypt_email }}
+    --redirect
+  args:
+    creates: "/etc/letsencrypt/live/{{ domain_name }}/fullchain.pem"
+
+- name: Enable automatic certificate renewal
+  systemd:
+    name: certbot.timer
+    enabled: yes
+    state: started

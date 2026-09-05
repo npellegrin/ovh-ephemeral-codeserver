@@ -1,0 +1,4 @@
+---
+- name: Keep the customization role available for future tasks
+  debug:
+    msg: "Add project-specific packages and configuration here."

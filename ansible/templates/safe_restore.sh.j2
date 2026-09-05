@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+# Managed by Ansible (restore.yml). Validates and extracts a backup archive
+# without ever writing outside the allow-listed paths below.
+set -euo pipefail
+
+archive="/tmp/{{ latest_backup }}"
+
+allowed_paths=(
+{% for path in backup_paths %}
+  "{{ path | regex_replace('^/', '') }}"
+{% endfor %}
+)
+
+tmp_dir="$(mktemp -d /tmp/restore-XXXXXXXX)"
+trap 'rm -rf "$tmp_dir"' EXIT
+
+is_allowed() {
+  local entry="$1" prefix
+  for prefix in "${allowed_paths[@]}"; do
+    if [[ "$entry" == "$prefix" || "$entry" == "$prefix"/* ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+# 1. Validate every archive member before touching the filesystem.
+while IFS= read -r entry; do
+  [[ -z "$entry" ]] && continue
+  if [[ "$entry" == /* ]]; then
+    echo "safe_restore: refusing archive, absolute path entry '$entry'" >&2
+    exit 1
+  fi
+  if [[ "$entry" == *".."* ]]; then
+    echo "safe_restore: refusing archive, path traversal entry '$entry'" >&2
+    exit 1
+  fi
+  if ! is_allowed "$entry"; then
+    echo "safe_restore: refusing archive, unexpected entry '$entry'" >&2
+    exit 1
+  fi
+done < <(tar -tzf "$archive")
+
+# 2. Reject symlinks/hardlinks: they are the classic way to make an
+#    "extract under an allow-listed directory" restore write outside it.
+while IFS= read -r line; do
+  [[ -z "$line" ]] && continue
+  case "${line:0:1}" in
+    l|h)
+      echo "safe_restore: refusing archive, link entry '$line'" >&2
+      exit 1
+      ;;
+  esac
+done < <(tar -tvzf "$archive")
+
+# 3. Only now extract, into an isolated, private temporary directory.
+tar -xzf "$archive" -C "$tmp_dir"
+
+# 4. Re-check each allow-listed path post-extraction: its resolved
+#    (symlink-free) location must still be inside tmp_dir.
+for prefix in "${allowed_paths[@]}"; do
+  src="$tmp_dir/$prefix"
+  [[ -e "$src" ]] || continue
+
+  real_src="$(realpath -e "$src")"
+  case "$real_src" in
+    "$tmp_dir"/*) ;;
+    *)
+      echo "safe_restore: refusing to restore '$prefix', it escapes the extraction directory" >&2
+      exit 1
+      ;;
+  esac
+
+  dest="/$prefix"
+  if [[ -d "$src" ]]; then
+    mkdir -p "$dest"
+    cp -a "$src/." "$dest/"
+  else
+    mkdir -p "$(dirname "$dest")"
+    cp -a "$src" "$dest"
+  fi
+  echo "safe_restore: restored $dest"
+done

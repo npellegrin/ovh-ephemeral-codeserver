@@ -1,10 +1,13 @@
-.PHONY: bootstrap create destroy backup restore ssh-wait generate-ephemeral-vars
+.PHONY: bootstrap create destroy backup restore ssh-wait generate-ephemeral-vars generate-vault-vars
 
-# group_vars/vault.yml is Ansible Vault-encrypted; this prompts for the vault
-# password interactively. Override on the command line if needed.
-VAULT_ARGS ?= --ask-vault-pass
+# group_vars/vault.yml is Ansible Vault-encrypted; .vault_pass (gitignored)
+# holds the password so generate-vault-vars + every ansible-playbook call
+# don't prompt repeatedly. Override on the command line if needed, e.g.
+# `make create VAULT_ARGS=--ask-vault-pass`.
+VAULT_ARGS ?= --vault-password-file $(CURDIR)/.vault_pass
 
 EPHEMERAL_TFVARS := generated.tfvars
+VAULT_FILE := ansible/group_vars/vault.yml
 
 bootstrap:
 	cd terraform-bootstrap && terraform init -input=false -backend-config=backend.tfvars
@@ -20,21 +23,41 @@ generate-ephemeral-vars:
 	  echo 'keypair_name   = "'$$(cd terraform-bootstrap && terraform output -raw keypair_name)'"'; \
 	} > terraform-ephemeral/$(EPHEMERAL_TFVARS)
 
-create: generate-ephemeral-vars
+# Injects terraform-bootstrap's S3 outputs
+generate-vault-vars:
+	@test -f $(VAULT_FILE) || { echo "Error: $(VAULT_FILE) not found. Run: cp ansible/group_vars/vault.yml.example $(VAULT_FILE), fill in the manual secrets, then retry."; exit 1; }
+	@S3_BUCKET=$$(cd terraform-bootstrap && terraform output -raw s3_bucket_name) && \
+	S3_ENDPOINT=$$(cd terraform-bootstrap && terraform output -raw backup_s3_endpoint) && \
+	S3_ACCESS_KEY=$$(cd terraform-bootstrap && terraform output -raw backup_s3_access_key) && \
+	S3_SECRET_KEY=$$(cd terraform-bootstrap && terraform output -raw backup_s3_secret_key) && \
+	(ansible-vault view $(VAULT_ARGS) $(VAULT_FILE) > /tmp/vault_plain.yml 2>/dev/null || cp $(VAULT_FILE) /tmp/vault_plain.yml) && \
+	sed -i \
+	  -e "s|^s3_bucket:.*|s3_bucket: \"$$S3_BUCKET\"|" \
+	  -e "s|^s3_endpoint:.*|s3_endpoint: \"$$S3_ENDPOINT\"|" \
+	  -e "s|^s3_access_key:.*|s3_access_key: \"$$S3_ACCESS_KEY\"|" \
+	  -e "s|^s3_secret_key:.*|s3_secret_key: \"$$S3_SECRET_KEY\"|" \
+	  /tmp/vault_plain.yml && \
+	NEW_PASS=$$(head -c32 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c32) && \
+	sed -i "s|^code_server_password:.*|code_server_password: \"$$NEW_PASS\"|" /tmp/vault_plain.yml && \
+	ansible-vault encrypt $(VAULT_ARGS) --output=$(VAULT_FILE) /tmp/vault_plain.yml && \
+	rm -f /tmp/vault_plain.yml && \
+	echo "code_server_password set. View it with: ansible-vault view $(VAULT_ARGS) $(VAULT_FILE)"
+
+create: generate-ephemeral-vars generate-vault-vars
 	cd terraform-ephemeral && terraform init -input=false -backend-config=backend.tfvars
 	cd terraform-ephemeral && terraform apply -input=false -var-file=terraform.tfvars -var-file=$(EPHEMERAL_TFVARS)
 	$(MAKE) ssh-wait
 	cd ansible && ansible-playbook -i inventory/generated.ini site.yml $(VAULT_ARGS)
 	cd ansible && ansible-playbook -i inventory/generated.ini restore.yml $(VAULT_ARGS)
 
-destroy: generate-ephemeral-vars
+destroy: generate-ephemeral-vars generate-vault-vars
 	cd ansible && ansible-playbook -i inventory/generated.ini backup.yml $(VAULT_ARGS)
 	cd terraform-ephemeral && terraform destroy -input=false -var-file=terraform.tfvars -var-file=$(EPHEMERAL_TFVARS)
 
-backup:
+backup: generate-vault-vars
 	cd ansible && ansible-playbook -i inventory/generated.ini backup.yml $(VAULT_ARGS)
 
-restore:
+restore: generate-vault-vars
 	cd ansible && ansible-playbook -i inventory/generated.ini restore.yml $(VAULT_ARGS)
 
 ssh-wait:

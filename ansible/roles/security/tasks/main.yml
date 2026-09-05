@@ -1,0 +1,129 @@
+---
+- name: Upgrade all system packages
+  apt:
+    update_cache: yes
+    upgrade: dist
+
+- name: Install base security packages
+  apt:
+    name:
+      - nftables
+      - fail2ban
+      - unattended-upgrades
+      - apt-listchanges
+    state: present
+
+- name: Configure automatic security updates
+  copy:
+    dest: /etc/apt/apt.conf.d/50unattended-upgrades
+    content: |
+      Unattended-Upgrade::Allowed-Origins {
+          "${distro_id}:${distro_codename}-security";
+      };
+      Unattended-Upgrade::Automatic-Reboot "false";
+
+- name: Disable SSH password authentication
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PasswordAuthentication'
+    line: 'PasswordAuthentication no'
+  notify: restart sshd
+
+- name: Disable SSH root login
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PermitRootLogin'
+    line: 'PermitRootLogin no'
+  notify: restart sshd
+
+- name: Configure the nftables base ruleset
+  copy:
+    dest: /etc/nftables.conf
+    content: |
+      #!/usr/sbin/nft -f
+      flush ruleset
+
+      table inet filter {
+        chain input {
+          type filter hook input priority 0; policy drop;
+
+          ct state established,related accept
+
+          iif "lo" accept
+
+          ip protocol icmp limit rate 5/second accept
+
+          {% for cidr in allowed_ssh_cidrs %}
+          tcp dport 22 ip saddr {{ cidr }} ct state new limit rate 10/minute accept
+          {% endfor %}
+
+          {% for cidr in allowed_http_cidrs %}
+          tcp dport 80 ip saddr {{ cidr }} accept
+          {% endfor %}
+
+          {% for cidr in allowed_https_cidrs %}
+          tcp dport 443 ip saddr {{ cidr }} accept
+          {% endfor %}
+
+          log prefix "nftables-dropped: " drop
+        }
+
+        chain forward {
+          type filter hook forward priority 0; policy drop;
+        }
+
+        chain output {
+          type filter hook output priority 0; policy accept;
+        }
+      }
+  notify: restart nftables
+
+- name: Enable nftables at boot
+  systemd:
+    name: nftables
+    enabled: yes
+    state: started
+
+- name: Configure fail2ban for SSH
+  copy:
+    dest: /etc/fail2ban/jail.local
+    content: |
+      [sshd]
+      enabled = true
+      port = 22
+      filter = sshd
+      logpath = /var/log/auth.log
+      maxretry = 3
+      bantime = 3600
+      findtime = 600
+  notify: restart fail2ban
+
+- name: Enable fail2ban
+  systemd:
+    name: fail2ban
+    enabled: yes
+    state: started
+
+- name: Disable unnecessary kernel modules
+  copy:
+    dest: /etc/modprobe.d/blacklist-rare.conf
+    content: |
+      blacklist dccp
+      blacklist sctp
+      blacklist rds
+      blacklist tipc
+
+- name: Configure security-related sysctl settings
+  sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_set: yes
+    state: present
+    reload: yes
+  loop:
+    - { name: "net.ipv4.conf.all.accept_redirects", value: "0" }
+    - { name: "net.ipv4.conf.all.send_redirects", value: "0" }
+    - { name: "net.ipv4.conf.all.accept_source_route", value: "0" }
+    - { name: "net.ipv4.tcp_syncookies", value: "1" }
+    - { name: "net.ipv4.conf.all.rp_filter", value: "1" }
+    - { name: "kernel.dmesg_restrict", value: "1" }
