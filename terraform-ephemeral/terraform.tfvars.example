@@ -1,0 +1,10 @@
+# ovh_project_id, compute_region, keypair_name are NOT here: `make`
+# generates them into generated.tfvars from terraform-bootstrap's outputs
+# on every run. See variables.tf.
+
+instance_flavor     = "b3-8"
+instance_image      = "Debian 13"
+volume_size_gb      = 40
+allowed_ssh_cidrs   = ["YOUR_PUBLIC_IP/32"]
+allowed_https_cidrs = ["0.0.0.0/0"]
+allowed_http_cidrs  = ["0.0.0.0/0"]
