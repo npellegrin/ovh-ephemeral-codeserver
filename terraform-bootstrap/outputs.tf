@@ -7,17 +7,17 @@ output "s3_bucket_name" {
 
 output "backup_s3_endpoint" {
   description = "OVH Object Storage S3 endpoint for the backups bucket's region."
-  value       = "https://s3.${lower(var.region)}.io.cloud.ovh.net"
+  value       = "https://s3.${lower(var.object_storage_region)}.io.cloud.ovh.net"
 }
 
 output "backup_s3_access_key" {
   description = "S3 access key for the backups bucket. Copy into ansible/group_vars/vault.yml as s3_access_key."
-  value       = openstack_identity_ec2_credential_v3.backup_s3.access
+  value       = ovh_cloud_project_user_s3_credential.backup_s3.access_key_id
 }
 
 output "backup_s3_secret_key" {
   description = "S3 secret key for the backups bucket. Copy into ansible/group_vars/vault.yml as s3_secret_key."
-  value       = openstack_identity_ec2_credential_v3.backup_s3.secret
+  value       = ovh_cloud_project_user_s3_credential.backup_s3.secret_access_key
   sensitive   = true
 }
 

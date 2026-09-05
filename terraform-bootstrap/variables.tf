@@ -5,10 +5,16 @@ variable "ovh_project_id" {
   type        = string
 }
 
-variable "region" {
-  description = "OVH region for resource creation (for example, GRA, SBG, DE)"
+variable "object_storage_region" {
+  description = "OVH Object Storage region"
   type        = string
   default     = "GRA"
+}
+
+variable "compute_region" {
+  description = "OVH Compute/Network region"
+  type        = string
+  default     = "GRA11"
 }
 
 variable "ssh_public_key_path" {
