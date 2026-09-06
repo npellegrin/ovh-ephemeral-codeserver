@@ -34,11 +34,13 @@
   failed_when: "'31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE' not in claude_code_key.stdout"
 
 - name: Add the Claude Code apt repository
-  apt_repository:
-    repo: >-
-      deb [signed-by=/etc/apt/keyrings/claude-code.asc]
-      https://downloads.claude.ai/claude-code/apt/stable stable main
-    filename: claude-code
+  deb822_repository:
+    name: claude-code
+    types: deb
+    uris: https://downloads.claude.ai/claude-code/apt/stable
+    suites: stable
+    components: main
+    signed_by: /etc/apt/keyrings/claude-code.asc
     state: present
 
 - name: Install the Claude Code CLI

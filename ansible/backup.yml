@@ -7,7 +7,7 @@
     - group_vars/vault.yml
 
   vars:
-    backup_filename: "backup-{{ ansible_date_time.iso8601_basic_short }}.tar.gz"
+    backup_filename: "backup-{{ ansible_facts.date_time.iso8601_basic_short }}.tar.gz"
     # rclone reads a whole remote definition from the environment, so the Swift
     # credentials never land in a config file on the instance. Applied only to
     # the tasks that talk to Object Storage.
