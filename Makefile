@@ -52,8 +52,11 @@ create: generate-ephemeral-vars generate-vault-vars
 	cd terraform-ephemeral && terraform apply -input=false -var-file=terraform.tfvars -var-file=$(EPHEMERAL_TFVARS)
 	$(MAKE) ssh-wait
 	@if [ "$$(cd terraform-ephemeral && terraform output -raw dns_managed)" != "true" ]; then \
-	  IP=$$(cd terraform-ephemeral && terraform output -raw public_ip); \
-	  echo "DNS is not managed by Terraform. Point your A record at $$IP now,"; \
+	  IP4=$$(cd terraform-ephemeral && terraform output -raw public_ipv4); \
+	  IP6=$$(cd terraform-ephemeral && terraform output -raw public_ipv6); \
+	  echo "DNS is not managed by Terraform. Point your records now:"; \
+	  [ -n "$$IP4" ] && echo "  A    -> $$IP4"; \
+	  [ -n "$$IP6" ] && echo "  AAAA -> $$IP6"; \
 	  echo "otherwise Let's Encrypt will fail in the next step."; \
 	  read -p "Press enter to continue once DNS is set... " REPLY; \
 	fi
@@ -72,6 +75,6 @@ restore: generate-vault-vars
 
 ssh-wait:
 	@echo "Waiting for SSH to become available..."
-	@IP=$$(cd terraform-ephemeral && terraform output -raw public_ip); \
-	until nc -z -w2 $$IP 22; do sleep 5; echo "Waiting for $$IP:22..."; done
+	@IP4=$$(cd terraform-ephemeral && terraform output -raw public_ipv4); \
+	until nc -z -w2 $$IP4 22; do sleep 5; echo "Waiting for $$IP4:22..."; done
 	@sleep 10

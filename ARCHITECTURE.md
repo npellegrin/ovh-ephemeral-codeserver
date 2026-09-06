@@ -16,14 +16,14 @@ is cheaper than shelving for any usage under ~50% daily uptime.
 Two separate Terraform states. `terraform-bootstrap` holds what must
 survive a destroy (backups bucket, state bucket, keypair) and is applied
 once. `terraform-ephemeral` holds only the instance, its security group,
-and its public IP, destroyed and recreated every cycle. A `terraform
+and its public IPv4/IPv6, destroyed and recreated every cycle. A `terraform
 destroy` mistake in daily use can't wipe your backups or remote state.
 
 ## No network gateway
 
-The instance attaches directly to OVH's `Ext-Net` for its public IP
-(`image_id` + `network { uuid = ... }` on `openstack_compute_instance_v2`,
-no `block_device`/floating IP/router). A router with an external gateway
+The instance attaches directly to OVH's `Ext-Net` for its public IPv4 and
+IPv6 (`image_id` + `network { uuid = ... }` on
+`openstack_compute_instance_v2`, no `block_device`/floating IP/router). A router with an external gateway
 provisions a billed OVH "Gateway" resource, which would run continuously
 if it lived in the always-on bootstrap stack. `block_device` was tried
 first and failed apply-time with "Neither a boot device, image ID, or
@@ -61,21 +61,24 @@ New/unverified OVH accounts get a `security_group` quota of 0 (likely to
 stop them bypassing OVH's default outbound block on ports 25/465/587, an
 anti-spam-relay measure). `create_security_group` (terraform-ephemeral)
 defaults to `false`: the instance uses the project's built-in `default`
-group, and nftables (Ansible) does the IP filtering for SSH/HTTP/HTTPS
+group, and nftables (Ansible) does the filtering for SSH/HTTP/HTTPS
 instead, via `allowed_ssh_cidrs`/`allowed_http_cidrs`/`allowed_https_cidrs`
-in `group_vars/vault.yml`. All default to `0.0.0.0/0`; narrowing SSH's
-risks a self-lockout if your source IP changes, so it isn't restricted by
-default even though the variable exists. Once your account's quota allows
-it, `create_security_group = true` adds the same filtering at the
-OpenStack level too.
+and their `_v6` counterparts in `group_vars/vars.yml`. IPv4 defaults to
+`0.0.0.0/0`, IPv6 to `::/0`; narrowing SSH's risks a self-lockout if your
+address changes, so it isn't restricted by default even though the
+variable exists. Once your account's quota allows it,
+`create_security_group = true` adds the same filtering at the OpenStack
+level too.
 
 ## Let's Encrypt needs port 80 open
 
-Certbot's `--nginx` plugin uses the ACME HTTP-01 challenge, which Let's
-Encrypt's servers hit on port 80 from arbitrary IPs, both for the initial
-certificate and every renewal (not just once). Narrowing
-`allowed_http_cidrs` from the `0.0.0.0/0` default breaks renewal unless you
-switch to a DNS-01 challenge instead.
+Certbot uses the ACME HTTP-01 challenge (`certonly --webroot`), which Let's
+Encrypt's servers hit on port 80 from arbitrary addresses, both for the
+initial certificate and every renewal (not just once). A deploy hook
+reloads nginx after each renewal. Narrowing `allowed_http_cidrs` /
+`allowed_http_cidrs_v6` from their defaults breaks renewal unless you
+switch to a DNS-01 challenge instead. With an AAAA record published, Let's
+Encrypt prefers IPv6, so a half-broken IPv6 path breaks renewal too.
 
 ## Auto-generated files
 

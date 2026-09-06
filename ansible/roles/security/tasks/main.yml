@@ -53,16 +53,30 @@
 
           ip protocol icmp limit rate 5/second accept
 
+          # ICMPv6: NDP is mandatory for IPv6 to work at all; the rest is PMTUD.
+          ip6 nexthdr icmpv6 icmpv6 type { nd-neighbor-solicit, nd-neighbor-advert, nd-router-solicit, nd-router-advert } accept
+          ip6 nexthdr icmpv6 icmpv6 type { destination-unreachable, packet-too-big, time-exceeded, parameter-problem } accept
+          ip6 nexthdr icmpv6 icmpv6 type echo-request limit rate 5/second accept
+
           {% for cidr in allowed_ssh_cidrs %}
           tcp dport 22 ip saddr {{ cidr }} ct state new limit rate 10/minute accept
+          {% endfor %}
+          {% for cidr in allowed_ssh_cidrs_v6 %}
+          tcp dport 22 ip6 saddr {{ cidr }} ct state new limit rate 10/minute accept
           {% endfor %}
 
           {% for cidr in allowed_http_cidrs %}
           tcp dport 80 ip saddr {{ cidr }} accept
           {% endfor %}
+          {% for cidr in allowed_http_cidrs_v6 %}
+          tcp dport 80 ip6 saddr {{ cidr }} accept
+          {% endfor %}
 
           {% for cidr in allowed_https_cidrs %}
           tcp dport 443 ip saddr {{ cidr }} accept
+          {% endfor %}
+          {% for cidr in allowed_https_cidrs_v6 %}
+          tcp dport 443 ip6 saddr {{ cidr }} accept
           {% endfor %}
 
           log prefix "nftables-dropped: " drop
@@ -126,4 +140,7 @@
     - { name: "net.ipv4.conf.all.accept_source_route", value: "0" }
     - { name: "net.ipv4.tcp_syncookies", value: "1" }
     - { name: "net.ipv4.conf.all.rp_filter", value: "1" }
+    - { name: "net.ipv6.conf.all.accept_redirects", value: "0" }
+    - { name: "net.ipv6.conf.default.accept_redirects", value: "0" }
+    - { name: "net.ipv6.conf.all.accept_source_route", value: "0" }
     - { name: "kernel.dmesg_restrict", value: "1" }

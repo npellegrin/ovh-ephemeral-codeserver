@@ -57,8 +57,26 @@ variable "allowed_http_cidrs" {
   default     = ["0.0.0.0/0"] # Public HTTP by default; restrict if needed.
 }
 
+variable "allowed_ssh_cidrs_v6" {
+  description = "IPv6 CIDR ranges allowed for SSH. Only used when create_security_group is true."
+  type        = list(string)
+  default     = []
+}
+
+variable "allowed_https_cidrs_v6" {
+  description = "IPv6 CIDR ranges allowed for HTTPS. Only used when create_security_group is true."
+  type        = list(string)
+  default     = ["::/0"]
+}
+
+variable "allowed_http_cidrs_v6" {
+  description = "IPv6 CIDR ranges allowed for HTTP. Only used when create_security_group is true."
+  type        = list(string)
+  default     = ["::/0"]
+}
+
 variable "manage_dns" {
-  description = "Create/update an A record in an OVH DNS zone pointing at the instance IP. false: point DNS yourself (make create pauses to let you do it)."
+  description = "Create/update A (and AAAA if the instance has IPv6) records in an OVH DNS zone pointing at the instance. false: point DNS yourself (make create pauses to let you do it)."
   type        = bool
   default     = false
 }
@@ -76,7 +94,7 @@ variable "dns_subdomain" {
 }
 
 variable "dns_ttl" {
-  description = "TTL (seconds) for the managed A record."
+  description = "TTL (seconds) for the managed A/AAAA records."
   type        = number
   default     = 60
 }

@@ -47,6 +47,45 @@ resource "openstack_networking_secgroup_rule_v2" "http_ingress" {
   security_group_id = openstack_networking_secgroup_v2.dev_secgroup[0].id
 }
 
+resource "openstack_networking_secgroup_rule_v2" "ssh_ingress_v6" {
+  for_each = var.create_security_group ? toset(var.allowed_ssh_cidrs_v6) : []
+
+  region            = var.compute_region
+  direction         = "ingress"
+  ethertype         = "IPv6"
+  protocol          = "tcp"
+  port_range_min    = 22
+  port_range_max    = 22
+  remote_ip_prefix  = each.value
+  security_group_id = openstack_networking_secgroup_v2.dev_secgroup[0].id
+}
+
+resource "openstack_networking_secgroup_rule_v2" "https_ingress_v6" {
+  for_each = var.create_security_group ? toset(var.allowed_https_cidrs_v6) : []
+
+  region            = var.compute_region
+  direction         = "ingress"
+  ethertype         = "IPv6"
+  protocol          = "tcp"
+  port_range_min    = 443
+  port_range_max    = 443
+  remote_ip_prefix  = each.value
+  security_group_id = openstack_networking_secgroup_v2.dev_secgroup[0].id
+}
+
+resource "openstack_networking_secgroup_rule_v2" "http_ingress_v6" {
+  for_each = var.create_security_group ? toset(var.allowed_http_cidrs_v6) : []
+
+  region            = var.compute_region
+  direction         = "ingress"
+  ethertype         = "IPv6"
+  protocol          = "tcp"
+  port_range_min    = 80
+  port_range_max    = 80
+  remote_ip_prefix  = each.value
+  security_group_id = openstack_networking_secgroup_v2.dev_secgroup[0].id
+}
+
 resource "openstack_networking_secgroup_rule_v2" "egress_all" {
   count = var.create_security_group ? 1 : 0
 
@@ -54,5 +93,15 @@ resource "openstack_networking_secgroup_rule_v2" "egress_all" {
   direction         = "egress"
   ethertype         = "IPv4"
   remote_ip_prefix  = "0.0.0.0/0"
+  security_group_id = openstack_networking_secgroup_v2.dev_secgroup[0].id
+}
+
+resource "openstack_networking_secgroup_rule_v2" "egress_all_v6" {
+  count = var.create_security_group ? 1 : 0
+
+  region            = var.compute_region
+  direction         = "egress"
+  ethertype         = "IPv6"
+  remote_ip_prefix  = "::/0"
   security_group_id = openstack_networking_secgroup_v2.dev_secgroup[0].id
 }

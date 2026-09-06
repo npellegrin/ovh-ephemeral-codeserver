@@ -23,6 +23,13 @@ allowed_http_cidrs:
   - "0.0.0.0/0"
 allowed_https_cidrs:
   - "0.0.0.0/0"
+# IPv6 counterparts. Set to [] to keep a port IPv4-only.
+allowed_ssh_cidrs_v6:
+  - "::/0"
+allowed_http_cidrs_v6:
+  - "::/0"
+allowed_https_cidrs_v6:
+  - "::/0"
 
 # --- backup / restore ---
 # Absolute paths tarred by backup.yml and, on restore, the only paths

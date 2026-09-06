@@ -2,8 +2,12 @@ output "instance_id" {
   value = openstack_compute_instance_v2.dev_instance.id
 }
 
-output "public_ip" {
-  value = openstack_compute_instance_v2.dev_instance.access_ip_v4
+output "public_ipv4" {
+  value = local.instance_ipv4
+}
+
+output "public_ipv6" {
+  value = local.instance_ipv6
 }
 
 output "volume_id" {

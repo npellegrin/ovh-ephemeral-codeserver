@@ -15,10 +15,13 @@ create_security_group = false
 allowed_ssh_cidrs   = ["YOUR_PUBLIC_IP/32"]
 allowed_https_cidrs = ["0.0.0.0/0"]
 allowed_http_cidrs  = ["0.0.0.0/0"]
+allowed_ssh_cidrs_v6   = ["YOUR_PUBLIC_IP/64"]
+allowed_https_cidrs_v6 = ["::/0"]
+allowed_http_cidrs_v6  = ["::/0"]
 
-# DNS: true lets Terraform manage the A record in an OVH zone (needs the
-# OVH_* env vars, see README). false means you point DNS yourself and
-# `make create` pauses to let you do it before requesting the certificate.
+# DNS: true lets Terraform manage the A record (+ AAAA if the instance has
+# IPv6) in an OVH zone (needs the OVH_* env vars, see README). false means
+# you point DNS yourself and `make create` pauses before the certificate.
 manage_dns    = false
 dns_zone      = "example.com"
 dns_subdomain = "dev"

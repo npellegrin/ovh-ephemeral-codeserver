@@ -75,10 +75,11 @@ project, a domain name, a local SSH keypair.
   method to raise the quota.
 - **"Neither a boot device, image ID, or image name..."**: `instance_image`
   must exactly match an active image name for your region.
-- **Let's Encrypt fails on `make create`**: the public IP changes every
-  cycle; your DNS A record must point at the new one before Ansible
-  reaches the nginx role. Use `manage_dns = true` or update it during the
-  pause.
+- **Let's Encrypt fails on `make create`**: the public IPv4/IPv6 change
+  every cycle; your DNS A/AAAA records must point at the new ones before
+  Ansible reaches the nginx role. Use `manage_dns = true` or update them
+  during the pause. If only IPv6 is broken, remove the AAAA (Let's Encrypt
+  prefers it).
 - **`make` keeps asking for the vault password**: create `.vault_pass`
   (step 6 above).
 - **`OVHcloud API error (status code 403) ... not been granted` on DNS**:

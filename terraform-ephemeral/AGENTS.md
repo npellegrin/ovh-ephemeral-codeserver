@@ -19,7 +19,7 @@ group. Destroyed and recreated daily.
   for a manual DNS update before Ansible. `dns_subdomain`+`dns_zone` must
   resolve to ansible's `domain_name`.
 - Do not read `.terraform/`, `*.tfstate*`, `.terraform.lock.hcl`.
-- Output values consumed by Ansible (`public_ip`, etc.) must stay stable in
+- Output values consumed by Ansible (`public_ipv4`, etc.) must stay stable in
   name and type — Ansible inventory generation depends on them.
 - `ovh_project_id`, `compute_region`, `keypair_name` come from
   terraform-bootstrap's outputs via the Makefile's `generate-ephemeral-vars`
