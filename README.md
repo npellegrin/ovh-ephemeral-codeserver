@@ -5,6 +5,32 @@ you spin up to work and tear down when done, backing up your data to
 Object Storage in between. See [ARCHITECTURE.md](ARCHITECTURE.md) for the
 why behind each design choice.
 
+## Features
+
+- **code-server**: VS Code in the browser, pinned version installed from
+  the official `.deb` with checksum verification, password auth, bound to
+  localhost behind nginx.
+- **HTTPS**: nginx reverse proxy, Let's Encrypt certificate via the ACME
+  HTTP-01 webroot challenge, auto-renewal with an nginx-reload deploy hook.
+- **Dual-stack IPv4 + IPv6**: nginx listens on both; optional Terraform
+  management of the OVH DNS `A`/`AAAA` records.
+- **IP filtering**: nftables allowlists per port (SSH/HTTP/HTTPS), separate
+  IPv4 and IPv6 CIDR lists, plus the mandatory ICMPv6/NDP rules. Optionally
+  mirrored at the OpenStack layer via a security group.
+- **Hardening**: SSH key-only (no root, no password), fail2ban on SSH,
+  unattended security upgrades, sysctl tightening, rare-protocol module
+  blacklist.
+- **Ephemeral lifecycle**: `make create` / `make destroy`; the instance and
+  its public IPs are recreated each cycle, nothing stateful lives in the
+  ephemeral Terraform stack.
+- **Backup / restore**: `tar` (with exclude list) to OVH S3 Object Storage
+  via rclone; restore only writes back allow-listed paths. Runs
+  automatically on `create` (restore) and `destroy` (backup).
+- **Secrets**: split config, non-secret in `group_vars/vars.yml`, secrets
+  in an Ansible Vault-encrypted `group_vars/vault.yml`.
+- **Extension point**: the Ansible `customization` role for
+  project-specific packages and config.
+
 ## Setup
 
 Prerequisites: Terraform >= 1.5, Ansible >= 2.15, an OVH Public Cloud
