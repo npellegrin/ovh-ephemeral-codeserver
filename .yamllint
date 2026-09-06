@@ -1,0 +1,17 @@
+# yamllint config for the validate workflow.
+extends: default
+
+rules:
+  line-length: disable
+  document-start: disable
+  comments:
+    min-spaces-from-content: 1
+  comments-indentation: disable
+  truthy:
+    check-keys: false
+    allowed-values: ["true", "false", "yes", "no"]
+  braces:
+    max-spaces-inside: 1
+
+ignore: |
+  .terraform/

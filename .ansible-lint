@@ -1,0 +1,10 @@
+# ansible-lint config for the validate workflow
+
+profile: basic
+
+exclude_paths:
+  - group_vars/vars.yml
+  - group_vars/vault.yml
+
+skip_list:
+  - yaml[truthy]  # `become: yes` style is used throughout, matches AGENTS.md

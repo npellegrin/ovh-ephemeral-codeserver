@@ -1,0 +1,100 @@
+# Validation CI: secret scan, Terraform / Ansible / Makefile syntax and lint.
+name: validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    name: Secret detection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  terraform:
+    name: Terraform
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dir: [terraform-bootstrap, terraform-ephemeral]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.14.3"
+      - name: fmt
+        run: terraform -chdir=${{ matrix.dir }} fmt -check -recursive -diff
+      - name: init
+        run: terraform -chdir=${{ matrix.dir }} init -backend=false -input=false
+      - name: validate
+        run: terraform -chdir=${{ matrix.dir }} validate
+
+  tflint:
+    name: TFLint
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dir: [terraform-bootstrap, terraform-ephemeral]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: terraform-linters/setup-tflint@v4
+      - run: tflint --chdir=${{ matrix.dir }} --init
+      - run: tflint --chdir=${{ matrix.dir }} -f compact
+
+  ansible:
+    name: Ansible
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install ansible-core ansible-lint yamllint
+      # Playbooks load two gitignored group_vars files; the .example copies
+      # carry placeholder values and are enough for a static parse.
+      - name: Stage placeholder group_vars
+        run: |
+          cp ansible/group_vars/vars.yml.example ansible/group_vars/vars.yml
+          cp ansible/group_vars/vault.yml.example ansible/group_vars/vault.yml
+      - name: yamllint
+        run: yamllint ansible .github
+      - name: Syntax check
+        working-directory: ansible
+        run: ansible-playbook --syntax-check site.yml backup.yml restore.yml
+      - name: ansible-lint
+        working-directory: ansible
+        run: ansible-lint
+
+  makefile:
+    name: Makefile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse all targets
+        run: >
+          make -n
+          bootstrap create destroy backup restore ssh-wait
+          check-secret-perms generate-ephemeral-vars generate-vault-vars
+          generate-swift-vars rotate-code-server-password
+          code-server-url code-server-password >/dev/null
+
+  actions:
+    name: Workflow lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker://rhysd/actionlint:1.7.7
+        with:
+          args: -color
