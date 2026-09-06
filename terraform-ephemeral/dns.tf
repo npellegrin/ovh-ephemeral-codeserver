@@ -18,7 +18,7 @@ resource "ovh_domain_zone_record" "dev_a" {
 }
 
 resource "ovh_domain_zone_record" "dev_aaaa" {
-  count = var.manage_dns && local.instance_ipv6 != "" ? 1 : 0
+  count = var.manage_dns ? 1 : 0
 
   zone      = var.dns_zone
   subdomain = var.dns_subdomain
