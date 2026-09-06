@@ -1,8 +1,6 @@
 ---
-# Claude Code CLI from Anthropic's signed apt repository (stable channel), plus
-# ripgrep, which the CLI shells out to for search. Installing from apt rather
-# than the native installer keeps the binary out of ~/.local/share/claude, so a
-# backup never carries it; ~/.claude (settings, history) is still backed up.
+# Claude Code CLI from Anthropic's signed apt repository (stable channel)
+# plus ripgrep, which the CLI shells out to for search.
 - name: Install ripgrep
   apt:
     name: ripgrep

@@ -1,7 +1,6 @@
 ---
 # nvm (Node version manager) from a pinned git tag, the install-from-git path
-# rather than the piped install.sh. Node builds land in ~/.nvm/versions
-# (in backup_excludes).
+
 - name: Install git for the nvm checkout
   apt:
     name: git

@@ -1,9 +1,7 @@
 ---
-# tfenv (Terraform version manager) from a pinned git tag, not a piped script,
-# then the latest Terraform release through it. tfenv checks each download
-# against HashiCorp's published SHASUMS, and against the PGP signature when gpg
-# and the HashiCorp key are available. Terraform builds land in
-# ~/.tfenv/versions, which is in backup_excludes.
+# tfenv (Terraform version manager) from a pinned git tag, not a piped script.
+# Latest Terraform release installed through it.
+
 - name: Install the tfenv prerequisites
   apt:
     name:

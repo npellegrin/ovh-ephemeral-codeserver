@@ -46,6 +46,7 @@
   register: uv_python_install
   changed_when: "'Installed' in uv_python_install.stderr"
 
+# Shared marker with ansible_core.yml, see the note there.
 - name: Put ~/.local/bin on PATH for interactive shells
   blockinfile:
     path: "/home/{{ code_server_user }}/.bashrc"
@@ -53,6 +54,6 @@
     owner: "{{ code_server_user }}"
     group: "{{ code_server_user }}"
     mode: "0644"
-    marker: "# {mark} ANSIBLE MANAGED - uv"
+    marker: "# {mark} ANSIBLE MANAGED - local bin"
     block: |
       export PATH="$HOME/.local/bin:$PATH"

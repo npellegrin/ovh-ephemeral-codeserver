@@ -35,8 +35,6 @@ allowed_https_cidrs_v6:
 
 # --- customization (optional dev tooling) ---
 # Each flag installs one tool via the customization role. All default to false
-# (roles/customization/defaults/main.yml); the toolchains they install are in
-# backup_excludes below, since every provision re-installs them from scratch.
 customization_terraform_plugin_cache: false  # ~/.terraform.d/plugin-cache + ~/.terraformrc
 customization_tfenv: false                   # Terraform version manager
 customization_uv: false                      # uv + CPython 3.13 / 3.14
@@ -44,6 +42,7 @@ customization_nvm: false                     # Node version manager
 customization_rustup: false                  # rustup + cargo
 customization_docker: false                  # Docker Engine + Compose plugin
 customization_claude_cli: false              # Claude Code CLI + ripgrep
+customization_ansible_core: false            # ansible-core via pipx
 
 # --- backup / restore ---
 # Absolute paths tarred by backup.yml and, on restore, the only paths
@@ -64,6 +63,7 @@ backup_excludes:
   - "*/.cargo"                     # cargo binaries + crate registry
   - "*/.local/share/uv"            # uv-managed CPython builds and tools
   - "*/.local/share/claude"        # claude native-install versions, if any
+  - "*/.local/share/pipx"          # pipx venvs, ansible-core's among them
   - "*/.docker"                    # docker cli / buildx state
   # Per-project artifacts these toolchains regenerate from a lockfile or
   # manifest. Not written by the role, but they only exist once it is enabled.
@@ -71,3 +71,4 @@ backup_excludes:
   - "*/.terraform"                 # per-project provider dirs, same
   - "*/.npm"                       # npm download cache
   - "*/.venv"                      # python virtualenvs, rebuilt by `uv sync`
+  - "*/.ansible"                   # galaxy collections/roles, fact cache, tmp

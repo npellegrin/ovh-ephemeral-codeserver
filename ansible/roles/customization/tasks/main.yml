@@ -28,3 +28,7 @@
 - name: Install the Claude CLI and ripgrep
   include_tasks: claude_cli.yml
   when: customization_claude_cli | bool
+
+- name: Install ansible-core
+  include_tasks: ansible_core.yml
+  when: customization_ansible_core | bool

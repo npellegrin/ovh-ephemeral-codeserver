@@ -11,6 +11,7 @@ customization_nvm: false
 customization_rustup: false
 customization_docker: false
 customization_claude_cli: false
+customization_ansible_core: false
 
 # Pinned versions. Bump the version and its checksum together (same model as the
 # code-server role). Checksums come from the upstream *.sha256 files.
@@ -22,6 +23,10 @@ rustup_init_sha256: "dda7234360b7f578ca8b0ddcb80145646fa61a67c1720a5abc7051b35c9
 
 tfenv_version: "v3.2.2"
 nvm_version: "v0.40.7"
+
+# pipx resolves this from PyPI, so there is no checksum to pair with it.
+# Not named ansible_version: that collides with the magic fact of the same name.
+ansible_core_version: "2.21.3"
 
 # CPython versions uv installs when customization_uv is true.
 uv_python_versions:

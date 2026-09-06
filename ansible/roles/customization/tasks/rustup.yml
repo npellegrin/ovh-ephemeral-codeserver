@@ -1,7 +1,6 @@
 ---
 # rustup + cargo from the pinned, checksummed rustup-init (no curl | sh).
-# Toolchains and the crate registry land in ~/.rustup and ~/.cargo, both in
-# backup_excludes: large, reinstallable, re-created on every provision.
+
 - name: Create a temp file for rustup-init
   tempfile:
     state: file

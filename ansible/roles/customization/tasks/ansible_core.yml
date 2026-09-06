@@ -1,0 +1,34 @@
+---
+# ansible-core dedicated pipx venv, the install method upstream documents.
+- name: Install pipx
+  apt:
+    name: pipx
+    state: present
+
+- name: Read the ansible-core version already installed, if any
+  command: "/home/{{ code_server_user }}/.local/bin/ansible --version"
+  become_user: "{{ code_server_user }}"
+  register: ansible_core_installed
+  changed_when: false
+  failed_when: false
+
+- name: Install ansible-core in its own pipx venv
+  command: "pipx install --force ansible-core=={{ ansible_core_version }}"
+  become_user: "{{ code_server_user }}"
+  environment:
+    PIPX_HOME: "/home/{{ code_server_user }}/.local/share/pipx"
+    PIPX_BIN_DIR: "/home/{{ code_server_user }}/.local/bin"
+  vars:
+    ansible_core_marker: "core {{ ansible_core_version }}"
+  when: ansible_core_marker not in ansible_core_installed.stdout
+
+- name: Put ~/.local/bin on PATH for interactive shells
+  blockinfile:
+    path: "/home/{{ code_server_user }}/.bashrc"
+    create: yes
+    owner: "{{ code_server_user }}"
+    group: "{{ code_server_user }}"
+    mode: "0644"
+    marker: "# {mark} ANSIBLE MANAGED - local bin"
+    block: |
+      export PATH="$HOME/.local/bin:$PATH"
