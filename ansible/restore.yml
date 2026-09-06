@@ -31,47 +31,60 @@
         mode: '0600'
       no_log: true
 
+    # rc=3 / "directory not found" means the bucket has no backups yet
+    # (first run); anything else is a real error.
     - name: Find the latest backup
       command: rclone lsf ovh-s3:{{ s3_bucket }}/ --format "t" --files-only
       register: backup_list
       changed_when: false
+      failed_when:
+        - backup_list.rc != 0
+        - "'directory not found' not in backup_list.stderr"
 
     - name: Select the latest backup
       set_fact:
-        latest_backup: "{{ (backup_list.stdout_lines | sort)[-1] }}"
+        latest_backup: "{{ (backup_list.stdout_lines | default([]) | sort | last) if (backup_list.stdout_lines | default([]) | length > 0) else '' }}"
 
-    - name: Download the latest backup
-      command: >
-        rclone copy ovh-s3:{{ s3_bucket }}/{{ latest_backup }} /tmp/
-
-    - name: Deploy the safe extraction script
-      template:
-        src: safe_restore.sh.j2
-        dest: /root/.safe_restore.sh
-        mode: '0700'
-
-    - name: Validate the archive and restore only allow-listed paths
-      command: /bin/bash /root/.safe_restore.sh
-      register: safe_restore
-      changed_when: "'restored' in safe_restore.stdout"
-
-    - name: Remove the extraction script
-      file:
-        path: /root/.safe_restore.sh
-        state: absent
-
-    - name: Fix permissions after restoration
-      file:
-        path: "/home/{{ code_server_user }}"
-        owner: "{{ code_server_user }}"
-        group: "{{ code_server_user }}"
-        recurse: yes
-
-    - name: Remove the temporary archive
-      file:
-        path: "/tmp/{{ latest_backup }}"
-        state: absent
-
-    - name: Confirm the restoration
+    - name: Skip restore when there is no backup
       debug:
-        msg: "Restoration completed from {{ latest_backup }}"
+        msg: "No backup found in {{ s3_bucket }}, nothing to restore."
+      when: latest_backup | length == 0
+
+    - name: Restore from the latest backup
+      when: latest_backup | length > 0
+      block:
+        - name: Download the latest backup
+          command: >
+            rclone copy ovh-s3:{{ s3_bucket }}/{{ latest_backup }} /tmp/
+
+        - name: Deploy the safe extraction script
+          template:
+            src: safe_restore.sh.j2
+            dest: /root/.safe_restore.sh
+            mode: '0700'
+
+        - name: Validate the archive and restore only allow-listed paths
+          command: /bin/bash /root/.safe_restore.sh
+          register: safe_restore
+          changed_when: "'restored' in safe_restore.stdout"
+
+        - name: Remove the extraction script
+          file:
+            path: /root/.safe_restore.sh
+            state: absent
+
+        - name: Fix permissions after restoration
+          file:
+            path: "/home/{{ code_server_user }}"
+            owner: "{{ code_server_user }}"
+            group: "{{ code_server_user }}"
+            recurse: yes
+
+        - name: Remove the temporary archive
+          file:
+            path: "/tmp/{{ latest_backup }}"
+            state: absent
+
+        - name: Confirm the restoration
+          debug:
+            msg: "Restoration completed from {{ latest_backup }}"
