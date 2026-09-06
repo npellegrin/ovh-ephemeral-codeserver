@@ -16,7 +16,10 @@ project, a domain name, a local SSH keypair.
    - OpenStack user: Manager → Public Cloud → project → Users & Roles →
      create a user, e.g. `Administrator` role.
    - API app credentials for the `ovh` provider:
-     https://api.ovh.com/createToken/, rights on `/cloud/project/*`.
+     https://api.ovh.com/createToken/, rights on `/cloud/project/*` (plus
+     `GET/POST/PUT/DELETE /domain/zone/*` if `manage_dns = true`). Scope
+     tighter by replacing `*` with `<projectId>` / `<zone>` and
+     `<projectId>/*` / `<zone>/*`.
    - S3 credentials for the Terraform state bucket: Manager → Public Cloud
      → project → Storage → Object Storage → Users tab.
 
@@ -78,6 +81,9 @@ project, a domain name, a local SSH keypair.
   pause.
 - **`make` keeps asking for the vault password**: create `.vault_pass`
   (step 6 above).
+- **`OVHcloud API error (status code 403) ... not been granted` on DNS**:
+  your API token lacks `/domain/zone/*` rights; recreate it (step 2) or
+  set `manage_dns = false`.
 
 ## License: GNU Affero General Public License v3.0
 
