@@ -45,10 +45,13 @@ project, a domain name, a local SSH keypair.
    cd ..
    ```
 
-6. **Ansible secrets**:
+6. **Ansible config and secrets**:
    ```bash
+   cp ansible/group_vars/vars.yml.example ansible/group_vars/vars.yml
+   # fill in domain_name, letsencrypt_email, backup_paths, backup_excludes (plaintext, gitignored)
    cp ansible/group_vars/vault.yml.example ansible/group_vars/vault.yml
-   # fill in domain_name, letsencrypt_email, backup_paths, backup_excludes
+   # fill in the manual secrets, then encrypt:
+   ansible-vault encrypt ansible/group_vars/vault.yml
    read -s -p "Vault password: " PASS && echo && printf '%s' "$PASS" > .vault_pass && chmod 600 .vault_pass && unset PASS
    ```
 

@@ -9,9 +9,14 @@ server {
     }
 }
 
+{% if tls_ready | default(false) %}
 server {
-    listen 443 ssl http2;
+    listen 443 ssl;
+    http2 on;
     server_name {{ domain_name }};
+
+    ssl_certificate /etc/letsencrypt/live/{{ domain_name }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ domain_name }}/privkey.pem;
 
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
@@ -30,3 +35,4 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
+{% endif %}

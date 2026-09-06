@@ -10,11 +10,14 @@ Provisioning (`site.yml`), backup (`backup.yml`), restore (`restore.yml`).
 - Do not weaken existing hardening (nftables rules, fail2ban, SSH config)
   when adding new roles or tasks.
 - nftables filters SSH/HTTP/HTTPS by `allowed_ssh_cidrs`/`allowed_http_cidrs`/
-  `allowed_https_cidrs` (group_vars/vault.yml), all defaulting to
+  `allowed_https_cidrs` (group_vars/vars.yml), all defaulting to
   `0.0.0.0/0`. This is the primary IP filter when terraform-ephemeral's
   `create_security_group` is `false` (the default, see its AGENTS.md).
-- Secrets go in `group_vars/vault.yml`, encrypted with Ansible Vault. Never
-  write secrets in plaintext YAML.
+- Two group_vars files, both gitignored, both loaded by every playbook via
+  `vars_files`: `vars.yml` (plaintext, non-secret config) and `vault.yml`
+  (Ansible Vault-encrypted, secrets only: `s3_access_key`, `s3_secret_key`,
+  `code_server_password`). Secrets go in `vault.yml`. Never write secrets in
+  plaintext YAML. New non-secret vars go in `vars.yml`.
 - Backup/restore playbooks must remain idempotent and safe to re-run.
 - Do not read `inventory/generated.ini` as a source of truth for code
   changes — it's a generated artifact, not meant to be edited or reviewed.

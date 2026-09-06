@@ -24,6 +24,8 @@ ansible/inventory/generated.ini
 *.retry
 ansible/group_vars/vault.yml
 !ansible/group_vars/vault.yml.example
+ansible/group_vars/vars.yml
+!ansible/group_vars/vars.yml.example
 vault_pass
 vault_pass.txt
 .vault_pass*

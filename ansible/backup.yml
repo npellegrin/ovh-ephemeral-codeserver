@@ -3,6 +3,7 @@
   hosts: dev_servers
   become: yes
   vars_files:
+    - group_vars/vars.yml
     - group_vars/vault.yml
 
   vars:

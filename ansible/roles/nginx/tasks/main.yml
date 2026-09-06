@@ -12,10 +12,25 @@
     path: /etc/nginx/sites-enabled/default
     state: absent
 
+- name: Ensure the ACME webroot exists
+  file:
+    path: /var/www/html
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: "0755"
+
+- name: Check whether the Let's Encrypt certificate already exists
+  stat:
+    path: "/etc/letsencrypt/live/{{ domain_name }}/fullchain.pem"
+  register: le_cert
+
 - name: Configure the Nginx reverse proxy for code-server
   template:
     src: code-server.conf.j2
     dest: /etc/nginx/sites-available/code-server.conf
+  vars:
+    tls_ready: "{{ le_cert.stat.exists }}"
   notify: restart nginx
 
 - name: Enable the site
@@ -31,16 +46,44 @@
     state: started
     enabled: yes
 
+# Apply the HTTP vhost before certbot performs the webroot challenge
+- name: Reload Nginx before requesting the certificate
+  meta: flush_handlers
+
 - name: Obtain the Let's Encrypt certificate
   command: >
-    certbot --nginx
+    certbot certonly --webroot
+    -w /var/www/html
     -d {{ domain_name }}
     --non-interactive
     --agree-tos
     -m {{ letsencrypt_email }}
-    --redirect
   args:
     creates: "/etc/letsencrypt/live/{{ domain_name }}/fullchain.pem"
+
+- name: Render the Nginx config with TLS enabled
+  template:
+    src: code-server.conf.j2
+    dest: /etc/nginx/sites-available/code-server.conf
+  vars:
+    tls_ready: true
+  notify: restart nginx
+
+# certonly records no installer, so `certbot renew` won't reload Nginx on
+# its own; this deploy hook runs after every successful renewal.
+- name: Ensure the renewal deploy-hook directory exists
+  file:
+    path: /etc/letsencrypt/renewal-hooks/deploy
+    state: directory
+    mode: "0755"
+
+- name: Install the renewal deploy hook (reload Nginx)
+  copy:
+    dest: /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh
+    mode: "0755"
+    content: |
+      #!/bin/sh
+      systemctl reload nginx
 
 - name: Enable automatic certificate renewal
   systemd:

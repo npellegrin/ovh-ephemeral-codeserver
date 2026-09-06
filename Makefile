@@ -7,6 +7,7 @@
 VAULT_ARGS ?= --vault-password-file $(CURDIR)/.vault_pass
 
 EPHEMERAL_TFVARS := generated.tfvars
+VARS_FILE := ansible/group_vars/vars.yml
 VAULT_FILE := ansible/group_vars/vault.yml
 
 bootstrap:
@@ -23,22 +24,25 @@ generate-ephemeral-vars:
 	  echo 'keypair_name   = "'$$(cd terraform-bootstrap && terraform output -raw keypair_name)'"'; \
 	} > terraform-ephemeral/$(EPHEMERAL_TFVARS)
 
-# Injects terraform-bootstrap's S3 outputs
+# Injects terraform-bootstrap's S3 outputs.
 generate-vault-vars:
+	@test -f $(VARS_FILE) || { echo "Error: $(VARS_FILE) not found. Run: cp ansible/group_vars/vars.yml.example $(VARS_FILE), fill it in, then retry."; exit 1; }
 	@test -f $(VAULT_FILE) || { echo "Error: $(VAULT_FILE) not found. Run: cp ansible/group_vars/vault.yml.example $(VAULT_FILE), fill in the manual secrets, then retry."; exit 1; }
 	@S3_BUCKET=$$(cd terraform-bootstrap && terraform output -raw s3_bucket_name) && \
 	S3_ENDPOINT=$$(cd terraform-bootstrap && terraform output -raw backup_s3_endpoint) && \
 	S3_ACCESS_KEY=$$(cd terraform-bootstrap && terraform output -raw backup_s3_access_key) && \
 	S3_SECRET_KEY=$$(cd terraform-bootstrap && terraform output -raw backup_s3_secret_key) && \
-	(ansible-vault view $(VAULT_ARGS) $(VAULT_FILE) > /tmp/vault_plain.yml 2>/dev/null || cp $(VAULT_FILE) /tmp/vault_plain.yml) && \
 	sed -i \
 	  -e "s|^s3_bucket:.*|s3_bucket: \"$$S3_BUCKET\"|" \
 	  -e "s|^s3_endpoint:.*|s3_endpoint: \"$$S3_ENDPOINT\"|" \
+	  $(VARS_FILE) && \
+	(ansible-vault view $(VAULT_ARGS) $(VAULT_FILE) > /tmp/vault_plain.yml 2>/dev/null || cp $(VAULT_FILE) /tmp/vault_plain.yml) && \
+	NEW_PASS=$$(head -c32 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c32) && \
+	sed -i \
 	  -e "s|^s3_access_key:.*|s3_access_key: \"$$S3_ACCESS_KEY\"|" \
 	  -e "s|^s3_secret_key:.*|s3_secret_key: \"$$S3_SECRET_KEY\"|" \
+	  -e "s|^code_server_password:.*|code_server_password: \"$$NEW_PASS\"|" \
 	  /tmp/vault_plain.yml && \
-	NEW_PASS=$$(head -c32 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c32) && \
-	sed -i "s|^code_server_password:.*|code_server_password: \"$$NEW_PASS\"|" /tmp/vault_plain.yml && \
 	ansible-vault encrypt $(VAULT_ARGS) --output=$(VAULT_FILE) /tmp/vault_plain.yml && \
 	rm -f /tmp/vault_plain.yml && \
 	echo "code_server_password set. View it with: ansible-vault view $(VAULT_ARGS) $(VAULT_FILE)"
