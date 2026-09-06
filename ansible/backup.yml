@@ -16,6 +16,12 @@
         name: rclone
         state: present
 
+    - name: Ensure the rclone config directory exists
+      file:
+        path: /root/.config/rclone
+        state: directory
+        mode: '0700'
+
     - name: Configure rclone for OVH Object Storage
       copy:
         dest: /root/.config/rclone/rclone.conf
