@@ -24,8 +24,9 @@ why behind each design choice.
   its public IPs are recreated each cycle, nothing stateful lives in the
   ephemeral Terraform stack.
 - **Backup / restore**: `tar` (with exclude list) to OVH Object Storage
-  (rclone over Swift); restore only writes back allow-listed paths. Runs
-  automatically on `create` (restore) and `destroy` (backup).
+  (rclone over Swift), staged through a private temp file; backup aborts if
+  the archive would not fit on disk. Restore only writes back allow-listed
+  paths. Runs automatically on `create` (restore) and `destroy` (backup).
 - **Secrets**: split config, non-secret in `group_vars/vars.yml`, secrets
   in an Ansible Vault-encrypted `group_vars/vault.yml`.
 - **Extension point**: the Ansible `customization` role for

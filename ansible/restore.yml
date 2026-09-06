@@ -18,8 +18,14 @@
         state: directory
         mode: '0700'
 
+    - name: Create a temp file for the downloaded archive
+      tempfile:
+        state: file
+        suffix: .tar.gz
+      register: restore_archive
+
     # The rclone config holds the Swift credentials; it is rewritten on
-    # every run, so the always block wipes it afterwards.
+    # every run, so the always block wipes it (and the archive) afterwards.
     - name: Run the restore
       block:
         - name: Configure rclone for OVH Object Storage (Swift)
@@ -43,8 +49,8 @@
 
         # rc=3 / "directory not found" means the container has no backups yet
         # (first run); anything else is a real error.
-        - name: Find the latest backup
-          command: rclone lsf ovh:{{ backup_bucket }}/ --format "t" --files-only
+        - name: List the backups
+          command: rclone lsf ovh:{{ backup_bucket }}/ --files-only
           register: backup_list
           changed_when: false
           failed_when:
@@ -53,7 +59,10 @@
 
         - name: Select the latest backup
           set_fact:
-            latest_backup: "{{ (backup_list.stdout_lines | default([]) | sort | last) if (backup_list.stdout_lines | default([]) | length > 0) else '' }}"
+            latest_backup: >-
+              {{ (backup_list.stdout_lines | default([])
+                  | select('match', 'backup-.*\.tar\.gz$')
+                  | sort | list)[-1] | default('') }}
 
         - name: Skip restore when there is no backup
           debug:
@@ -64,8 +73,7 @@
           when: latest_backup | length > 0
           block:
             - name: Download the latest backup
-              command: >
-                rclone copy ovh:{{ backup_bucket }}/{{ latest_backup }} /tmp/
+              command: rclone copyto ovh:{{ backup_bucket }}/{{ latest_backup }} {{ restore_archive.path }}
 
             - name: Deploy the safe extraction script
               template:
@@ -90,11 +98,6 @@
                 group: "{{ code_server_user }}"
                 recurse: yes
 
-            - name: Remove the temporary archive
-              file:
-                path: "/tmp/{{ latest_backup }}"
-                state: absent
-
             - name: Confirm the restoration
               debug:
                 msg: "Restoration completed from {{ latest_backup }}"
@@ -102,4 +105,9 @@
         - name: Remove the rclone credentials (regenerated every run)
           file:
             path: /root/.config/rclone/rclone.conf
+            state: absent
+
+        - name: Remove the downloaded archive
+          file:
+            path: "{{ restore_archive.path }}"
             state: absent

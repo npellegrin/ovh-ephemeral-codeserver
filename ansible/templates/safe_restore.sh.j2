@@ -3,7 +3,7 @@
 # without ever writing outside the allow-listed paths below.
 set -euo pipefail
 
-archive="/tmp/{{ latest_backup }}"
+archive="{{ restore_archive.path }}"
 
 allowed_paths=(
 {% for path in backup_paths %}

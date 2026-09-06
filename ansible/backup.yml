@@ -8,7 +8,6 @@
 
   vars:
     backup_filename: "backup-{{ ansible_date_time.iso8601_basic_short }}.tar.gz"
-    backup_tmp_path: "/tmp/{{ backup_filename }}"
 
   tasks:
     - name: Install rclone
@@ -22,10 +21,41 @@
         state: directory
         mode: '0700'
 
+    - name: Create a temp file for the backup archive
+      tempfile:
+        state: file
+        suffix: .tar.gz
+      register: backup_archive
+
     # The rclone config holds the Swift credentials; it is rewritten on
     # every run, so the always block wipes it (and the archive) afterwards.
     - name: Run the backup
       block:
+        - name: Estimate the size of the data to back up
+          command: >
+            du -sbc
+            {% for exclude in backup_excludes %}--exclude={{ exclude }} {% endfor %}
+            {% for path in backup_paths %}{{ path }} {% endfor %}
+          register: backup_du
+          changed_when: false
+
+        - name: Measure free space on the archive filesystem
+          command: df -B1 --output=avail {{ backup_archive.path | dirname }}
+          register: backup_fs
+          changed_when: false
+
+        # The archive is at most the uncompressed size of the data, so if
+        # that fits we are safe; if it does not, fail rather than half-write.
+        - name: Ensure there is enough disk space for the backup archive
+          assert:
+            that:
+              - (backup_fs.stdout_lines[-1] | trim | int) > (backup_du.stdout_lines[-1].split()[0] | int)
+            fail_msg: >-
+              Not enough free space on {{ backup_archive.path | dirname }}:
+              up to {{ backup_du.stdout_lines[-1].split()[0] | int }} bytes needed,
+              {{ backup_fs.stdout_lines[-1] | trim | int }} available.
+            quiet: true
+
         - name: Configure rclone for OVH Object Storage (Swift)
           copy:
             dest: /root/.config/rclone/rclone.conf
@@ -49,11 +79,11 @@
           shell: >
             tar
             {% for exclude in backup_excludes %}--exclude='{{ exclude }}' {% endfor %}
-            -czf {{ backup_tmp_path }}
+            -czf {{ backup_archive.path }}
             {% for path in backup_paths %}{{ path }} {% endfor %}
 
         - name: Upload the archive to Object Storage
-          command: rclone copy {{ backup_tmp_path }} ovh:{{ backup_bucket }}/
+          command: rclone copyto {{ backup_archive.path }} ovh:{{ backup_bucket }}/{{ backup_filename }}
 
         - name: Confirm the backup
           debug:
@@ -66,5 +96,5 @@
 
         - name: Remove the local temporary archive
           file:
-            path: "{{ backup_tmp_path }}"
+            path: "{{ backup_archive.path }}"
             state: absent
