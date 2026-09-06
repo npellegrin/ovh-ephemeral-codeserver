@@ -38,15 +38,20 @@ generate-vault-vars:
 	  -e "s|^swift_region:.*|swift_region: \"$$SWIFT_REGION\"|" \
 	  -e "s|^swift_tenant_id:.*|swift_tenant_id: \"$$SWIFT_TENANT_ID\"|" \
 	  $(VARS_FILE) && \
-	(ansible-vault view $(VAULT_ARGS) $(VAULT_FILE) > /tmp/vault_plain.yml 2>/dev/null || cp $(VAULT_FILE) /tmp/vault_plain.yml) && \
+	PLAIN=$$(mktemp) && chmod 600 "$$PLAIN" && \
+	trap 'rm -f "$$PLAIN"' EXIT INT TERM && \
+	if head -n1 $(VAULT_FILE) | grep -q '^\$$ANSIBLE_VAULT'; then \
+	  ansible-vault view $(VAULT_ARGS) $(VAULT_FILE) > "$$PLAIN"; \
+	else \
+	  cp $(VAULT_FILE) "$$PLAIN"; \
+	fi && \
 	NEW_PASS=$$(head -c32 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c32) && \
 	sed -i \
 	  -e "s|^swift_user:.*|swift_user: \"$$SWIFT_USER\"|" \
 	  -e "s|^swift_key:.*|swift_key: \"$$SWIFT_KEY\"|" \
 	  -e "s|^code_server_password:.*|code_server_password: \"$$NEW_PASS\"|" \
-	  /tmp/vault_plain.yml && \
-	ansible-vault encrypt $(VAULT_ARGS) --output=$(VAULT_FILE) /tmp/vault_plain.yml && \
-	rm -f /tmp/vault_plain.yml && \
+	  "$$PLAIN" && \
+	ansible-vault encrypt $(VAULT_ARGS) --output=$(VAULT_FILE) "$$PLAIN" && \
 	echo "code_server_password set. View it with: ansible-vault view $(VAULT_ARGS) $(VAULT_FILE)"
 
 create: generate-ephemeral-vars generate-vault-vars
