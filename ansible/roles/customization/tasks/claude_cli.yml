@@ -1,0 +1,50 @@
+---
+# Claude Code CLI from Anthropic's signed apt repository (stable channel), plus
+# ripgrep, which the CLI shells out to for search. Installing from apt rather
+# than the native installer keeps the binary out of ~/.local/share/claude, so a
+# backup never carries it; ~/.claude (settings, history) is still backed up.
+- name: Install ripgrep
+  apt:
+    name: ripgrep
+    state: present
+
+- name: Install prerequisites for the Claude Code repository
+  apt:
+    name:
+      - ca-certificates
+      - gnupg
+    state: present
+
+- name: Ensure the apt keyrings directory exists
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Add the Claude Code apt signing key
+  get_url:
+    url: https://downloads.claude.ai/keys/claude-code.asc
+    dest: /etc/apt/keyrings/claude-code.asc
+    mode: "0644"
+
+# The key is fetched over TLS from the same host as the packages, so pin the
+# published fingerprint rather than trusting whatever the URL served.
+- name: Verify the Claude Code signing key fingerprint
+  command: gpg --show-keys --with-colons /etc/apt/keyrings/claude-code.asc
+  register: claude_code_key
+  changed_when: false
+  failed_when: "'31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE' not in claude_code_key.stdout"
+
+- name: Add the Claude Code apt repository
+  apt_repository:
+    repo: >-
+      deb [signed-by=/etc/apt/keyrings/claude-code.asc]
+      https://downloads.claude.ai/claude-code/apt/stable stable main
+    filename: claude-code
+    state: present
+
+- name: Install the Claude Code CLI
+  apt:
+    name: claude-code
+    state: present
+    update_cache: yes

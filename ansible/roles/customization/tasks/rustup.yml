@@ -1,0 +1,41 @@
+---
+# rustup + cargo from the pinned, checksummed rustup-init (no curl | sh).
+# Toolchains and the crate registry land in ~/.rustup and ~/.cargo, both in
+# backup_excludes: large, reinstallable, re-created on every provision.
+- name: Create a temp file for rustup-init
+  tempfile:
+    state: file
+  register: rustup_init
+
+- name: Download the pinned rustup-init
+  get_url:
+    url: "https://static.rust-lang.org/rustup/archive/{{ rustup_version }}/x86_64-unknown-linux-gnu/rustup-init"
+    dest: "{{ rustup_init.path }}"
+    checksum: "sha256:{{ rustup_init_sha256 }}"
+    mode: '0755'
+
+# --no-modify-path: the shell wiring is managed by the blockinfile below.
+- name: Install the stable Rust toolchain
+  command: "{{ rustup_init.path }} -y --no-modify-path --default-toolchain stable --profile default"
+  become_user: "{{ code_server_user }}"
+  environment:
+    RUSTUP_HOME: "/home/{{ code_server_user }}/.rustup"
+    CARGO_HOME: "/home/{{ code_server_user }}/.cargo"
+  args:
+    creates: "/home/{{ code_server_user }}/.cargo/bin/cargo"
+
+- name: Remove rustup-init
+  file:
+    path: "{{ rustup_init.path }}"
+    state: absent
+
+- name: Put cargo on PATH for interactive shells
+  blockinfile:
+    path: "/home/{{ code_server_user }}/.bashrc"
+    create: yes
+    owner: "{{ code_server_user }}"
+    group: "{{ code_server_user }}"
+    mode: "0644"
+    marker: "# {mark} ANSIBLE MANAGED - rustup"
+    block: |
+      . "$HOME/.cargo/env"

@@ -1,0 +1,45 @@
+---
+# tfenv (Terraform version manager) from a pinned git tag, not a piped script,
+# then the latest Terraform release through it. tfenv checks each download
+# against HashiCorp's published SHASUMS, and against the PGP signature when gpg
+# and the HashiCorp key are available. Terraform builds land in
+# ~/.tfenv/versions, which is in backup_excludes.
+- name: Install the tfenv prerequisites
+  apt:
+    name:
+      - git       # the tfenv checkout itself
+      - curl      # tfenv fetches releases with curl
+      - unzip     # release artifacts are zips
+      - gnupg     # lets tfenv verify the release signature, not just the sha256
+    state: present
+
+- name: Clone tfenv at the pinned tag
+  git:
+    repo: https://github.com/tfutils/tfenv.git
+    dest: "/home/{{ code_server_user }}/.tfenv"
+    version: "{{ tfenv_version }}"
+    depth: 1
+  become_user: "{{ code_server_user }}"
+
+- name: Put tfenv on PATH for interactive shells
+  blockinfile:
+    path: "/home/{{ code_server_user }}/.bashrc"
+    create: yes
+    owner: "{{ code_server_user }}"
+    group: "{{ code_server_user }}"
+    mode: "0644"
+    marker: "# {mark} ANSIBLE MANAGED - tfenv"
+    block: |
+      export PATH="$HOME/.tfenv/bin:$PATH"
+
+# `install latest` is a no-op once that release is present, so re-runs are free.
+- name: Install the latest Terraform release
+  command: "/home/{{ code_server_user }}/.tfenv/bin/tfenv install latest"
+  become_user: "{{ code_server_user }}"
+  register: tfenv_install
+  changed_when: "'already installed' not in tfenv_install.stdout"
+
+- name: Select it as the default Terraform version
+  command: "/home/{{ code_server_user }}/.tfenv/bin/tfenv use latest"
+  become_user: "{{ code_server_user }}"
+  changed_when: false

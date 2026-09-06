@@ -1,4 +1,4 @@
-.PHONY: bootstrap create destroy backup restore ssh-wait generate-ephemeral-vars generate-vault-vars
+.PHONY: bootstrap create destroy backup restore ssh-wait generate-ephemeral-vars generate-vault-vars code-server-url code-server-password
 
 # group_vars/vault.yml is Ansible Vault-encrypted; .vault_pass (gitignored)
 # holds the password so generate-vault-vars + every ansible-playbook call
@@ -9,6 +9,13 @@ VAULT_ARGS ?= --vault-password-file $(CURDIR)/.vault_pass
 EPHEMERAL_TFVARS := generated.tfvars
 VARS_FILE := ansible/group_vars/vars.yml
 VAULT_FILE := ansible/group_vars/vault.yml
+
+# Reads one top-level scalar out of a flat group_vars file, quoted or not,
+# trailing comment stripped. Not a YAML parser, just enough for these two.
+# H is a literal '#'; unescaped it would start a make comment.
+H := \#
+yaml_get = sed -n 's/^$(1):[[:space:]]*"\?\([^"$(H)]*[^"$(H) ]\)"\?.*/\1/p' $(2)
+vault_password = ansible-vault view $(VAULT_ARGS) $(VAULT_FILE) | $(call yaml_get,code_server_password,-)
 
 bootstrap:
 	cd terraform-bootstrap && terraform init -input=false -backend-config=backend.tfvars
@@ -79,6 +86,20 @@ backup: generate-vault-vars
 
 restore: generate-vault-vars
 	cd ansible && ansible-playbook -i inventory/generated.ini restore.yml $(VAULT_ARGS)
+
+# Post-deploy access helpers. Both print a bare value on stdout and their
+# errors on stderr, so `make -s` output can be piped or substituted.
+code-server-url:
+	@test -f $(VARS_FILE) || { echo "Error: $(VARS_FILE) not found." >&2; exit 1; }
+	@DOMAIN=$$($(call yaml_get,domain_name,$(VARS_FILE))); \
+	test -n "$$DOMAIN" || { echo "Error: no domain_name in $(VARS_FILE)." >&2; exit 1; }; \
+	echo "https://$$DOMAIN/"
+
+code-server-password:
+	@test -f $(VAULT_FILE) || { echo "Error: $(VAULT_FILE) not found." >&2; exit 1; }
+	@PASS=$$($(vault_password)); \
+	test -n "$$PASS" || { echo "Error: no code_server_password in $(VAULT_FILE). Run: make generate-vault-vars" >&2; exit 1; }; \
+	echo "$$PASS"
 
 ssh-wait:
 	@echo "Waiting for SSH to become available..."

@@ -1,0 +1,56 @@
+---
+# Docker Engine + the Compose v2 plugin from Docker's official signed apt
+# repository. Images and volumes live in /var/lib/docker, outside backup_paths,
+# so nothing here ends up in a backup archive.
+- name: Install prerequisites for the Docker repository
+  apt:
+    name:
+      - ca-certificates
+      - gnupg
+    state: present
+
+- name: Ensure the apt keyrings directory exists
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Add the Docker apt signing key
+  get_url:
+    url: "https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg"
+    dest: /etc/apt/keyrings/docker.asc
+    mode: "0644"
+
+- name: Add the Docker apt repository
+  apt_repository:
+    repo: >-
+      deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc]
+      https://download.docker.com/linux/{{ ansible_distribution | lower }}
+      {{ ansible_distribution_release }} stable
+    filename: docker
+    state: present
+
+- name: Install Docker Engine and the Compose plugin
+  apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+    update_cache: yes
+
+# Membership grants root-equivalent access through the Docker socket; that is
+# the point of a single-user dev box, but it is not a privilege boundary.
+- name: Let the dev user reach the Docker socket
+  user:
+    name: "{{ code_server_user }}"
+    groups: docker
+    append: yes
+
+- name: Enable and start Docker
+  systemd:
+    name: docker
+    enabled: yes
+    state: started

@@ -1,4 +1,30 @@
 ---
-- name: Keep the customization role available for future tasks
-  debug:
-    msg: "Add project-specific packages and configuration here."
+# Dispatcher for the optional dev tooling. One task file per tool, included only
+# when its customization_* flag is true (all default false, see defaults/main.yml).
+- name: Set up the Terraform plugin cache
+  include_tasks: terraform_plugin_cache.yml
+  when: customization_terraform_plugin_cache | bool
+
+- name: Install tfenv
+  include_tasks: tfenv.yml
+  when: customization_tfenv | bool
+
+- name: Install uv and its managed Python versions
+  include_tasks: uv.yml
+  when: customization_uv | bool
+
+- name: Install nvm
+  include_tasks: nvm.yml
+  when: customization_nvm | bool
+
+- name: Install rustup and cargo
+  include_tasks: rustup.yml
+  when: customization_rustup | bool
+
+- name: Install Docker and Docker Compose
+  include_tasks: docker.yml
+  when: customization_docker | bool
+
+- name: Install the Claude CLI and ripgrep
+  include_tasks: claude_cli.yml
+  when: customization_claude_cli | bool

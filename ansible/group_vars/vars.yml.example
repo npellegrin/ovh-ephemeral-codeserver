@@ -33,6 +33,18 @@ allowed_http_cidrs_v6:
 allowed_https_cidrs_v6:
   - "::/0"
 
+# --- customization (optional dev tooling) ---
+# Each flag installs one tool via the customization role. All default to false
+# (roles/customization/defaults/main.yml); the toolchains they install are in
+# backup_excludes below, since every provision re-installs them from scratch.
+customization_terraform_plugin_cache: false  # ~/.terraform.d/plugin-cache + ~/.terraformrc
+customization_tfenv: false                   # Terraform version manager
+customization_uv: false                      # uv + CPython 3.13 / 3.14
+customization_nvm: false                     # Node version manager
+customization_rustup: false                  # rustup + cargo
+customization_docker: false                  # Docker Engine + Compose plugin
+customization_claude_cli: false              # Claude Code CLI + ripgrep
+
 # --- backup / restore ---
 # Absolute paths tarred by backup.yml and, on restore, the only paths
 # safe_restore.sh.j2 is allowed to write back to the filesystem.
@@ -43,3 +55,19 @@ backup_excludes:
   - "*/node_modules"
   # rclone's Swift credentials, regenerated every run. Never back them up.
   - "*/.config/rclone"
+  # Toolchains and caches installed by the customization role. Large, binary,
+  # and re-created on every provision, so keep them out of the archive. Drop
+  # the matching line if you want a tool's state to survive a destroy/create.
+  - "*/.tfenv"                     # tfenv + the terraform builds it installs
+  - "*/.nvm"                       # nvm + its node builds
+  - "*/.rustup"                    # rust toolchains
+  - "*/.cargo"                     # cargo binaries + crate registry
+  - "*/.local/share/uv"            # uv-managed CPython builds and tools
+  - "*/.local/share/claude"        # claude native-install versions, if any
+  - "*/.docker"                    # docker cli / buildx state
+  # Per-project artifacts these toolchains regenerate from a lockfile or
+  # manifest. Not written by the role, but they only exist once it is enabled.
+  - "*/.terraform.d/plugin-cache"  # shared provider cache, refilled by `terraform init`
+  - "*/.terraform"                 # per-project provider dirs, same
+  - "*/.npm"                       # npm download cache
+  - "*/.venv"                      # python virtualenvs, rebuilt by `uv sync`

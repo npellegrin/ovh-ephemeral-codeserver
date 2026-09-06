@@ -29,8 +29,12 @@ why behind each design choice.
   paths. Runs automatically on `create` (restore) and `destroy` (backup).
 - **Secrets**: split config, non-secret in `group_vars/vars.yml`, secrets
   in an Ansible Vault-encrypted `group_vars/vault.yml`.
-- **Extension point**: the Ansible `customization` role for
-  project-specific packages and config.
+- **Optional dev tooling**: the Ansible `customization` role ships one
+  toggle per tool, all off by default: Terraform plugin cache, tfenv, uv
+  (+ CPython 3.13/3.14), nvm, rustup/cargo, Docker + Compose, Claude Code
+  CLI + ripgrep. Pinned and checksum- or signature-verified, and their
+  toolchain directories are excluded from backups since every provision
+  reinstalls them.
 
 ## Setup
 
@@ -89,6 +93,13 @@ project, a domain name, a local SSH keypair.
    ```bash
    make create    # provision instance, restore last backup, ready to work
    make destroy   # backup current state, destroy instance
+   ```
+
+8. **Connect**: `make create` generates a fresh code-server password every
+   run and stores it in the vault. To get your credentials:
+   ```bash
+   make code-server-url       # prints https://<domain_name>/
+   make code-server-password  # prints the password (pipe it to a clipboard tool)
    ```
 
 ## Troubleshooting

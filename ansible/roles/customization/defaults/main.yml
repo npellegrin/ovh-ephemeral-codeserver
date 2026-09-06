@@ -1,0 +1,29 @@
+---
+# Optional developer tooling for the customization role. Every tool is off by
+# default; set the matching flag to true in group_vars/vars.yml to install it.
+# Each tool drops reinstallable binaries/caches under the dev user's home; those
+# paths are listed in backup_excludes so they never enter a backup archive.
+
+customization_terraform_plugin_cache: false
+customization_tfenv: false
+customization_uv: false
+customization_nvm: false
+customization_rustup: false
+customization_docker: false
+customization_claude_cli: false
+
+# Pinned versions. Bump the version and its checksum together (same model as the
+# code-server role). Checksums come from the upstream *.sha256 files.
+uv_version: "0.12.10"
+uv_sha256: "173d95a0c32d18c896c46ba6fafbf3cf9c14ab74b033f81b76c883ef492a976b"
+
+rustup_version: "1.29.1"
+rustup_init_sha256: "dda7234360b7f578ca8b0ddcb80145646fa61a67c1720a5abc7051b35c9fcb71"
+
+tfenv_version: "v3.2.2"
+nvm_version: "v0.40.7"
+
+# CPython versions uv installs when customization_uv is true.
+uv_python_versions:
+  - "3.13"
+  - "3.14"

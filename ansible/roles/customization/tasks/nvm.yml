@@ -1,0 +1,29 @@
+---
+# nvm (Node version manager) from a pinned git tag, the install-from-git path
+# rather than the piped install.sh. Node builds land in ~/.nvm/versions
+# (in backup_excludes).
+- name: Install git for the nvm checkout
+  apt:
+    name: git
+    state: present
+
+- name: Clone nvm at the pinned tag
+  git:
+    repo: https://github.com/nvm-sh/nvm.git
+    dest: "/home/{{ code_server_user }}/.nvm"
+    version: "{{ nvm_version }}"
+    depth: 1
+  become_user: "{{ code_server_user }}"
+
+- name: Load nvm in interactive shells
+  blockinfile:
+    path: "/home/{{ code_server_user }}/.bashrc"
+    create: yes
+    owner: "{{ code_server_user }}"
+    group: "{{ code_server_user }}"
+    mode: "0644"
+    marker: "# {mark} ANSIBLE MANAGED - nvm"
+    block: |
+      export NVM_DIR="$HOME/.nvm"
+      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+      [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"

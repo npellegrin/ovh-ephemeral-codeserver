@@ -5,8 +5,14 @@ Provisioning (`site.yml`), backup (`backup.yml`), restore (`restore.yml`).
 ## Rules
 
 - Roles are additive: `security`, `nginx`, `code-server` are fixed. New
-  customization (rustup, python, etc.) goes into the `customization` role
-  only, as conditionally-included task files where reasonable.
+  customization goes into the `customization` role only, as one task file
+  per tool, included from `tasks/main.yml` behind a `customization_<tool>`
+  flag defaulting to `false` in `roles/customization/defaults/main.yml`.
+- Install from pinned, checksummed artifacts or signed apt repos, never
+  `curl | sh`. Version + sha256 live together in the role defaults.
+- Anything a customization task writes under the dev user's home that a
+  re-provision would recreate (toolchains, caches, downloaded runtimes)
+  must be added to `backup_excludes` in `group_vars/vars.yml.example`.
 - Don't weaken existing hardening (nftables, fail2ban, SSH config).
 - nftables filters SSH/HTTP/HTTPS by `allowed_ssh_cidrs` /
   `allowed_http_cidrs` / `allowed_https_cidrs` and their `_v6` counterparts

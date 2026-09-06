@@ -1,0 +1,58 @@
+---
+# uv (Python package/project manager) from the pinned, checksummed release
+# tarball (no curl | sh). `uv python install` then fetches standalone CPython
+# builds into ~/.local/share/uv/python, which is in backup_excludes: large,
+# reinstallable, and re-created by this file on every provision.
+# https://docs.astral.sh/uv/concepts/python-versions/
+- name: Create a temp file for the uv tarball
+  tempfile:
+    state: file
+    suffix: .tar.gz
+  register: uv_tarball
+
+- name: Download the pinned uv release
+  get_url:
+    url: "https://github.com/astral-sh/uv/releases/download/{{ uv_version }}/uv-x86_64-unknown-linux-gnu.tar.gz"
+    dest: "{{ uv_tarball.path }}"
+    checksum: "sha256:{{ uv_sha256 }}"
+    mode: '0600'
+
+- name: Install uv and uvx into /usr/local/bin
+  unarchive:
+    src: "{{ uv_tarball.path }}"
+    dest: /usr/local/bin
+    remote_src: yes
+    owner: root
+    group: root
+    mode: '0755'
+    extra_opts:
+      - --strip-components=1
+      - --wildcards
+      - "*/uv"
+      - "*/uvx"
+
+- name: Remove the downloaded tarball
+  file:
+    path: "{{ uv_tarball.path }}"
+    state: absent
+
+# uv is a no-op when the version is already present, so this stays idempotent.
+- name: Install the managed CPython versions
+  command: "uv python install {{ item }}"
+  become_user: "{{ code_server_user }}"
+  environment:
+    UV_PYTHON_INSTALL_DIR: "/home/{{ code_server_user }}/.local/share/uv/python"
+  loop: "{{ uv_python_versions }}"
+  register: uv_python_install
+  changed_when: "'Installed' in uv_python_install.stderr"
+
+- name: Put ~/.local/bin on PATH for interactive shells
+  blockinfile:
+    path: "/home/{{ code_server_user }}/.bashrc"
+    create: yes
+    owner: "{{ code_server_user }}"
+    group: "{{ code_server_user }}"
+    mode: "0644"
+    marker: "# {mark} ANSIBLE MANAGED - uv"
+    block: |
+      export PATH="$HOME/.local/bin:$PATH"
