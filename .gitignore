@@ -21,6 +21,7 @@ terraform.rc
 
 # Ansible
 ansible/inventory/generated.ini
+ansible/collections/ansible_collections/
 *.retry
 ansible/group_vars/vault.yml
 !ansible/group_vars/vault.yml.example

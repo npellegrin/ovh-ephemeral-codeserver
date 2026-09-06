@@ -5,38 +5,38 @@
 # needs setfacl to hand Ansible's temp files over. Debian's cloud image has no
 # acl package so installing it.
 - name: Install acl, required by the become_user tasks in this role
-  apt:
+  ansible.builtin.apt:
     name: acl
     state: present
 
 - name: Set up the Terraform plugin cache
-  include_tasks: terraform_plugin_cache.yml
+  ansible.builtin.include_tasks: terraform_plugin_cache.yml
   when: customization_terraform_plugin_cache | bool
 
 - name: Install tfenv
-  include_tasks: tfenv.yml
+  ansible.builtin.include_tasks: tfenv.yml
   when: customization_tfenv | bool
 
 - name: Install uv and its managed Python versions
-  include_tasks: uv.yml
+  ansible.builtin.include_tasks: uv.yml
   when: customization_uv | bool
 
 - name: Install nvm
-  include_tasks: nvm.yml
+  ansible.builtin.include_tasks: nvm.yml
   when: customization_nvm | bool
 
 - name: Install rustup and cargo
-  include_tasks: rustup.yml
+  ansible.builtin.include_tasks: rustup.yml
   when: customization_rustup | bool
 
 - name: Install Docker and Docker Compose
-  include_tasks: docker.yml
+  ansible.builtin.include_tasks: docker.yml
   when: customization_docker | bool
 
 - name: Install the Claude CLI and ripgrep
-  include_tasks: claude_cli.yml
+  ansible.builtin.include_tasks: claude_cli.yml
   when: customization_claude_cli | bool
 
 - name: Install ansible-core
-  include_tasks: ansible_core.yml
+  ansible.builtin.include_tasks: ansible_core.yml
   when: customization_ansible_core | bool

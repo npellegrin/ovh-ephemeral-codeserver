@@ -9,7 +9,7 @@ rules:
   comments-indentation: disable
   truthy:
     check-keys: false
-    allowed-values: ["true", "false", "yes", "no"]
+    allowed-values: ["true", "false"]
   braces:
     max-spaces-inside: 1
 

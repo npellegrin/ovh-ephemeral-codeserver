@@ -1,7 +1,7 @@
 ---
 - name: Restore data from OVH Object Storage
   hosts: dev_servers
-  become: yes
+  become: true
   vars_files:
     - group_vars/vars.yml
     - group_vars/vault.yml
@@ -25,12 +25,12 @@
 
   tasks:
     - name: Install rclone
-      apt:
+      ansible.builtin.apt:
         name: rclone
         state: present
 
     - name: Create a temp file for the downloaded archive
-      tempfile:
+      ansible.builtin.tempfile:
         state: file
         suffix: .tar.gz
       register: restore_archive
@@ -41,7 +41,7 @@
         # rc=3 / "directory not found" means the container has no backups yet
         # (first run); anything else is a real error.
         - name: List the backups
-          command: rclone lsf ovh:{{ backup_bucket }}/ --files-only
+          ansible.builtin.command: rclone lsf ovh:{{ backup_bucket }}/ --files-only
           environment: "{{ rclone_env }}"
           register: backup_list
           changed_when: false
@@ -50,14 +50,14 @@
             - "'directory not found' not in backup_list.stderr"
 
         - name: Select the latest backup
-          set_fact:
+          ansible.builtin.set_fact:
             latest_backup: >-
               {{ (backup_list.stdout_lines | default([])
                   | select('match', 'backup-.*\.tar\.gz$')
                   | sort | list)[-1] | default('') }}
 
         - name: Skip restore when there is no backup
-          debug:
+          ansible.builtin.debug:
             msg: "No backup found in {{ backup_bucket }}, nothing to restore."
           when: latest_backup | length == 0
 
@@ -65,37 +65,38 @@
           when: latest_backup | length > 0
           block:
             - name: Download the latest backup
-              command: rclone copyto ovh:{{ backup_bucket }}/{{ latest_backup }} {{ restore_archive.path }}
+              ansible.builtin.command: rclone copyto ovh:{{ backup_bucket }}/{{ latest_backup }} {{ restore_archive.path }}
               environment: "{{ rclone_env }}"
+              changed_when: true
 
             - name: Deploy the safe extraction script
-              template:
+              ansible.builtin.template:
                 src: safe_restore.sh.j2
                 dest: /root/.safe_restore.sh
                 mode: '0700'
 
             - name: Validate the archive and restore only allow-listed paths
-              command: /bin/bash /root/.safe_restore.sh
+              ansible.builtin.command: /bin/bash /root/.safe_restore.sh
               register: safe_restore
               changed_when: "'restored' in safe_restore.stdout"
 
             - name: Remove the extraction script
-              file:
+              ansible.builtin.file:
                 path: /root/.safe_restore.sh
                 state: absent
 
             - name: Fix permissions after restoration
-              file:
+              ansible.builtin.file:
                 path: "/home/{{ code_server_user }}"
                 owner: "{{ code_server_user }}"
                 group: "{{ code_server_user }}"
-                recurse: yes
+                recurse: true
 
             - name: Confirm the restoration
-              debug:
+              ansible.builtin.debug:
                 msg: "Restoration completed from {{ latest_backup }}"
       always:
         - name: Remove the downloaded archive
-          file:
+          ansible.builtin.file:
             path: "{{ restore_archive.path }}"
             state: absent

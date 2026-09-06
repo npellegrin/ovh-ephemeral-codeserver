@@ -2,7 +2,7 @@
 # Shared provider plugin cache, so `terraform init` reuses downloaded providers
 # across workspaces instead of refetching them into every .terraform/ directory.
 - name: Create the Terraform plugin cache directory
-  file:
+  ansible.builtin.file:
     path: "/home/{{ code_server_user }}/.terraform.d/plugin-cache"
     state: directory
     owner: "{{ code_server_user }}"
@@ -10,7 +10,7 @@
     mode: "0755"
 
 - name: Point ~/.terraformrc at the plugin cache
-  copy:
+  ansible.builtin.copy:
     dest: "/home/{{ code_server_user }}/.terraformrc"
     owner: "{{ code_server_user }}"
     group: "{{ code_server_user }}"

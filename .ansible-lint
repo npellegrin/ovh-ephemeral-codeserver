@@ -1,10 +1,23 @@
 # ansible-lint config for the validate workflow
 
-profile: basic
+profile: production
 
 exclude_paths:
-  - group_vars/vars.yml
-  - group_vars/vault.yml
+  - ansible/group_vars/vars.yml
+  - ansible/group_vars/vault.yml
+  - ansible/collections/ansible_collections/
 
+# Deliberate deviations, kept as an explicit list rather than silent debt.
 skip_list:
-  - yaml[truthy]  # `become: yes` style is used throughout, matches AGENTS.md
+  # backup.yml streams tar straight into rclone. The archive/unarchive
+  # modules cannot do that and would stage a second full copy on disk.
+  - command-instead-of-module
+  # The role directory is code-server, matching the upstream project and the
+  # systemd unit name. Renaming it to code_server buys nothing.
+  - role-name
+  # customization sub-task vars (uv_version, rustup_dir, ...) read cleaner
+  # unprefixed and never collide.
+  - var-naming[no-role-prefix]
+  # copy/template tasks writing root-owned files under /etc rely on the
+  # default mode on purpose; spelling it out everywhere is churn, not safety.
+  - risky-file-permissions

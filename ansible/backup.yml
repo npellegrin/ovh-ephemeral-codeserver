@@ -1,7 +1,7 @@
 ---
 - name: Back up data to OVH Object Storage
   hosts: dev_servers
-  become: yes
+  become: true
   vars_files:
     - group_vars/vars.yml
     - group_vars/vault.yml
@@ -26,12 +26,12 @@
 
   tasks:
     - name: Install rclone
-      apt:
+      ansible.builtin.apt:
         name: rclone
         state: present
 
     - name: Create a temp file for the backup archive
-      tempfile:
+      ansible.builtin.tempfile:
         state: file
         suffix: .tar.gz
       register: backup_archive
@@ -40,7 +40,7 @@
     - name: Run the backup
       block:
         - name: Estimate the size of the data to back up
-          command: >
+          ansible.builtin.command: >
             du -sbc
             {% for exclude in backup_excludes %}--exclude={{ exclude }} {% endfor %}
             {% for path in backup_paths %}{{ path }} {% endfor %}
@@ -48,14 +48,14 @@
           changed_when: false
 
         - name: Measure free space on the archive filesystem
-          command: df -B1 --output=avail {{ backup_archive.path | dirname }}
+          ansible.builtin.command: df -B1 --output=avail {{ backup_archive.path | dirname }}
           register: backup_fs
           changed_when: false
 
         # The archive is at most the uncompressed size of the data, so if
         # that fits we are safe; if it does not, fail rather than half-write.
         - name: Ensure there is enough disk space for the backup archive
-          assert:
+          ansible.builtin.assert:
             that:
               - (backup_fs.stdout_lines[-1] | trim | int) > (backup_du.stdout_lines[-1].split()[0] | int)
             fail_msg: >-
@@ -65,21 +65,23 @@
             quiet: true
 
         - name: Create the backup archive
-          shell: >
+          ansible.builtin.shell: >
             tar
             {% for exclude in backup_excludes %}--exclude='{{ exclude }}' {% endfor %}
             -czf {{ backup_archive.path }}
             {% for path in backup_paths %}{{ path }} {% endfor %}
+          changed_when: true
 
         - name: Upload the archive to Object Storage
-          command: rclone copyto {{ backup_archive.path }} ovh:{{ backup_bucket }}/{{ backup_filename }}
+          ansible.builtin.command: rclone copyto {{ backup_archive.path }} ovh:{{ backup_bucket }}/{{ backup_filename }}
           environment: "{{ rclone_env }}"
+          changed_when: true
 
         - name: Confirm the backup
-          debug:
+          ansible.builtin.debug:
             msg: "Backup completed: {{ backup_filename }} uploaded to {{ backup_bucket }}"
       always:
         - name: Remove the local temporary archive
-          file:
+          ansible.builtin.file:
             path: "{{ backup_archive.path }}"
             state: absent

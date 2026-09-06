@@ -1,0 +1,6 @@
+---
+# Collections the playbooks depend on beyond ansible.builtin.
+# `ansible.posix` provides ansible.posix.sysctl (security role).
+collections:
+  - name: ansible.posix
+    version: ">=1.5.0"

@@ -1,6 +1,6 @@
 ---
 - name: Install Nginx and Certbot
-  apt:
+  ansible.builtin.apt:
     name:
       - nginx
       - certbot
@@ -8,20 +8,20 @@
     state: present
 
 - name: Remove the default configuration
-  file:
+  ansible.builtin.file:
     path: /etc/nginx/sites-enabled/default
     state: absent
 
 - name: Define the login rate-limit zone
-  copy:
+  ansible.builtin.copy:
     dest: /etc/nginx/conf.d/code-server-limits.conf
     content: |
       # Shared by the code-server vhost's `location = /login`.
       limit_req_zone $binary_remote_addr zone=cs_login:10m rate=10r/m;
-  notify: restart nginx
+  notify: Restart nginx
 
 - name: Ensure the ACME webroot exists
-  file:
+  ansible.builtin.file:
     path: /var/www/html
     state: directory
     owner: www-data
@@ -29,37 +29,37 @@
     mode: "0755"
 
 - name: Check whether the Let's Encrypt certificate already exists
-  stat:
+  ansible.builtin.stat:
     path: "/etc/letsencrypt/live/{{ domain_name }}/fullchain.pem"
   register: le_cert
 
 - name: Configure the Nginx reverse proxy for code-server
-  template:
+  ansible.builtin.template:
     src: code-server.conf.j2
     dest: /etc/nginx/sites-available/code-server.conf
   vars:
     tls_ready: "{{ le_cert.stat.exists }}"
-  notify: restart nginx
+  notify: Restart nginx
 
 - name: Enable the site
-  file:
+  ansible.builtin.file:
     src: /etc/nginx/sites-available/code-server.conf
     dest: /etc/nginx/sites-enabled/code-server.conf
     state: link
-  notify: restart nginx
+  notify: Restart nginx
 
 - name: Start Nginx (required for HTTP ACME validation)
-  systemd:
+  ansible.builtin.systemd:
     name: nginx
     state: started
-    enabled: yes
+    enabled: true
 
 # Apply the HTTP vhost before certbot performs the webroot challenge
 - name: Reload Nginx before requesting the certificate
-  meta: flush_handlers
+  ansible.builtin.meta: flush_handlers
 
 - name: Obtain the Let's Encrypt certificate
-  command: >
+  ansible.builtin.command: >
     certbot certonly --webroot
     -w /var/www/html
     -d {{ domain_name }}
@@ -70,23 +70,23 @@
     creates: "/etc/letsencrypt/live/{{ domain_name }}/fullchain.pem"
 
 - name: Render the Nginx config with TLS enabled
-  template:
+  ansible.builtin.template:
     src: code-server.conf.j2
     dest: /etc/nginx/sites-available/code-server.conf
   vars:
     tls_ready: true
-  notify: restart nginx
+  notify: Restart nginx
 
 # certonly records no installer, so `certbot renew` won't reload Nginx on
 # its own; this deploy hook runs after every successful renewal.
 - name: Ensure the renewal deploy-hook directory exists
-  file:
+  ansible.builtin.file:
     path: /etc/letsencrypt/renewal-hooks/deploy
     state: directory
     mode: "0755"
 
 - name: Install the renewal deploy hook (reload Nginx)
-  copy:
+  ansible.builtin.copy:
     dest: /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh
     mode: "0755"
     content: |
@@ -94,7 +94,7 @@
       systemctl reload nginx
 
 - name: Enable automatic certificate renewal
-  systemd:
+  ansible.builtin.systemd:
     name: certbot.timer
-    enabled: yes
+    enabled: true
     state: started

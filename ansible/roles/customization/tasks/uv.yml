@@ -5,23 +5,23 @@
 # reinstallable, and re-created by this file on every provision.
 # https://docs.astral.sh/uv/concepts/python-versions/
 - name: Create a temp file for the uv tarball
-  tempfile:
+  ansible.builtin.tempfile:
     state: file
     suffix: .tar.gz
   register: uv_tarball
 
 - name: Download the pinned uv release
-  get_url:
+  ansible.builtin.get_url:
     url: "https://github.com/astral-sh/uv/releases/download/{{ uv_version }}/uv-x86_64-unknown-linux-gnu.tar.gz"
     dest: "{{ uv_tarball.path }}"
     checksum: "sha256:{{ uv_sha256 }}"
     mode: '0600'
 
 - name: Install uv and uvx into /usr/local/bin
-  unarchive:
+  ansible.builtin.unarchive:
     src: "{{ uv_tarball.path }}"
     dest: /usr/local/bin
-    remote_src: yes
+    remote_src: true
     owner: root
     group: root
     mode: '0755'
@@ -32,13 +32,14 @@
       - "*/uvx"
 
 - name: Remove the downloaded tarball
-  file:
+  ansible.builtin.file:
     path: "{{ uv_tarball.path }}"
     state: absent
 
 # uv is a no-op when the version is already present, so this stays idempotent.
 - name: Install the managed CPython versions
-  command: "uv python install {{ item }}"
+  ansible.builtin.command: "uv python install {{ item }}"
+  become: true
   become_user: "{{ code_server_user }}"
   environment:
     UV_PYTHON_INSTALL_DIR: "/home/{{ code_server_user }}/.local/share/uv/python"
@@ -48,9 +49,9 @@
 
 # Shared marker with ansible_core.yml, see the note there.
 - name: Put ~/.local/bin on PATH for interactive shells
-  blockinfile:
+  ansible.builtin.blockinfile:
     path: "/home/{{ code_server_user }}/.bashrc"
-    create: yes
+    create: true
     owner: "{{ code_server_user }}"
     group: "{{ code_server_user }}"
     mode: "0644"

@@ -1,34 +1,34 @@
 ---
 - name: Create the dedicated user
-  user:
+  ansible.builtin.user:
     name: "{{ code_server_user }}"
     shell: /bin/bash
-    create_home: yes
+    create_home: true
 
 - name: Create a temp file for the code-server package
-  tempfile:
+  ansible.builtin.tempfile:
     state: file
     suffix: .deb
   register: code_server_deb
 
 - name: Download the pinned code-server .deb package
-  get_url:
+  ansible.builtin.get_url:
     url: "https://github.com/coder/code-server/releases/download/v{{ code_server_version }}/code-server_{{ code_server_version }}_amd64.deb"
     dest: "{{ code_server_deb.path }}"
     checksum: "sha256:{{ code_server_deb_sha256 }}"
     mode: '0600'
 
 - name: Install code-server from the verified package
-  apt:
+  ansible.builtin.apt:
     deb: "{{ code_server_deb.path }}"
 
 - name: Remove the downloaded package
-  file:
+  ansible.builtin.file:
     path: "{{ code_server_deb.path }}"
     state: absent
 
 - name: Create the configuration directory
-  file:
+  ansible.builtin.file:
     path: "/home/{{ code_server_user }}/.config/code-server"
     state: directory
     owner: "{{ code_server_user }}"
@@ -36,16 +36,16 @@
     mode: '0700'
 
 - name: Configure code-server
-  template:
+  ansible.builtin.template:
     src: config.yaml.j2
     dest: "/home/{{ code_server_user }}/.config/code-server/config.yaml"
     owner: "{{ code_server_user }}"
     group: "{{ code_server_user }}"
     mode: '0600'
-  notify: restart code-server
+  notify: Restart code-server
 
 - name: Create the systemd service
-  copy:
+  ansible.builtin.copy:
     dest: /etc/systemd/system/code-server.service
     content: |
       [Unit]
@@ -62,11 +62,11 @@
 
       [Install]
       WantedBy=multi-user.target
-  notify: restart code-server
+  notify: Restart code-server
 
 - name: Enable and start code-server
-  systemd:
+  ansible.builtin.systemd:
     name: code-server
-    daemon_reload: yes
-    enabled: yes
+    daemon_reload: true
+    enabled: true
     state: started

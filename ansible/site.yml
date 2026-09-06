@@ -1,7 +1,7 @@
 ---
 - name: Provision the development environment
   hosts: dev_servers
-  become: yes
+  become: true
   vars_files:
     - group_vars/vars.yml
     - group_vars/vault.yml

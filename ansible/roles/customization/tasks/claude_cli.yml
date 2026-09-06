@@ -2,25 +2,25 @@
 # Claude Code CLI from Anthropic's signed apt repository (stable channel)
 # plus ripgrep, which the CLI shells out to for search.
 - name: Install ripgrep
-  apt:
+  ansible.builtin.apt:
     name: ripgrep
     state: present
 
 - name: Install prerequisites for the Claude Code repository
-  apt:
+  ansible.builtin.apt:
     name:
       - ca-certificates
       - gnupg
     state: present
 
 - name: Ensure the apt keyrings directory exists
-  file:
+  ansible.builtin.file:
     path: /etc/apt/keyrings
     state: directory
     mode: "0755"
 
 - name: Add the Claude Code apt signing key
-  get_url:
+  ansible.builtin.get_url:
     url: https://downloads.claude.ai/keys/claude-code.asc
     dest: /etc/apt/keyrings/claude-code.asc
     mode: "0644"
@@ -28,13 +28,13 @@
 # The key is fetched over TLS from the same host as the packages, so pin the
 # published fingerprint rather than trusting whatever the URL served.
 - name: Verify the Claude Code signing key fingerprint
-  command: gpg --show-keys --with-colons /etc/apt/keyrings/claude-code.asc
+  ansible.builtin.command: gpg --show-keys --with-colons /etc/apt/keyrings/claude-code.asc
   register: claude_code_key
   changed_when: false
   failed_when: "'31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE' not in claude_code_key.stdout"
 
 - name: Add the Claude Code apt repository
-  deb822_repository:
+  ansible.builtin.deb822_repository:
     name: claude-code
     types: deb
     uris: https://downloads.claude.ai/claude-code/apt/stable
@@ -44,7 +44,7 @@
     state: present
 
 - name: Install the Claude Code CLI
-  apt:
+  ansible.builtin.apt:
     name: claude-code
     state: present
-    update_cache: yes
+    update_cache: true

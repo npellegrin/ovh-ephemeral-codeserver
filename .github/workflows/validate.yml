@@ -62,6 +62,8 @@ jobs:
         with:
           python-version: "3.13"
       - run: pip install ansible-core ansible-lint yamllint
+      - name: Install required collections
+        run: ansible-galaxy collection install -r ansible/collections/requirements.yml
       # Playbooks load two gitignored group_vars files; the .example copies
       # carry placeholder values and are enough for a static parse.
       - name: Stage placeholder group_vars
@@ -73,7 +75,7 @@ jobs:
       - name: Syntax check
         working-directory: ansible
         run: ansible-playbook --syntax-check site.yml backup.yml restore.yml
-      - name: ansible-lint
+      - name: ansible-lint (production profile)
         working-directory: ansible
         run: ansible-lint
 
