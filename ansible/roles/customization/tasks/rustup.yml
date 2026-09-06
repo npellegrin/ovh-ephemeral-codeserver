@@ -5,26 +5,26 @@
 - name: Create a temp directory for rustup-init
   ansible.builtin.tempfile:
     state: directory
-  register: rustup_dir
+  register: customization_rustup_dir
 
 # tempfile creates it 0700 root; the install below runs as the dev user and
 # needs to traverse and execute inside it.
 - name: Make the temp directory reachable by the dev user
   ansible.builtin.file:
-    path: "{{ rustup_dir.path }}"
+    path: "{{ customization_rustup_dir.path }}"
     state: directory
     mode: '0755'
 
 - name: Download the pinned rustup-init
   ansible.builtin.get_url:
-    url: "https://static.rust-lang.org/rustup/archive/{{ rustup_version }}/x86_64-unknown-linux-gnu/rustup-init"
-    dest: "{{ rustup_dir.path }}/rustup-init"
-    checksum: "sha256:{{ rustup_init_sha256 }}"
+    url: "https://static.rust-lang.org/rustup/archive/{{ customization_rustup_version }}/x86_64-unknown-linux-gnu/rustup-init"
+    dest: "{{ customization_rustup_dir.path }}/rustup-init"
+    checksum: "sha256:{{ customization_rustup_init_sha256 }}"
     mode: '0755'
 
 # --no-modify-path: the shell wiring is managed by the blockinfile below.
 - name: Install the stable Rust toolchain
-  ansible.builtin.command: "{{ rustup_dir.path }}/rustup-init -y --no-modify-path --default-toolchain stable --profile default"
+  ansible.builtin.command: "{{ customization_rustup_dir.path }}/rustup-init -y --no-modify-path --default-toolchain stable --profile default"
   become: true
   become_user: "{{ code_server_user }}"
   environment:
@@ -35,7 +35,7 @@
 
 - name: Remove rustup-init
   ansible.builtin.file:
-    path: "{{ rustup_dir.path }}"
+    path: "{{ customization_rustup_dir.path }}"
     state: absent
 
 - name: Put cargo on PATH for interactive shells

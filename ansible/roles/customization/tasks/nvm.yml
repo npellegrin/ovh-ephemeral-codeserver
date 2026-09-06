@@ -10,7 +10,7 @@
   ansible.builtin.git:
     repo: https://github.com/nvm-sh/nvm.git
     dest: "/home/{{ code_server_user }}/.nvm"
-    version: "{{ nvm_version }}"
+    version: "{{ customization_nvm_version }}"
     depth: 1
   become: true
   become_user: "{{ code_server_user }}"

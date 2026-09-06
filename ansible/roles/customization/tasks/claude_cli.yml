@@ -29,9 +29,9 @@
 # published fingerprint rather than trusting whatever the URL served.
 - name: Verify the Claude Code signing key fingerprint
   ansible.builtin.command: gpg --show-keys --with-colons /etc/apt/keyrings/claude-code.asc
-  register: claude_code_key
+  register: customization_claude_code_key
   changed_when: false
-  failed_when: "'31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE' not in claude_code_key.stdout"
+  failed_when: "'31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE' not in customization_claude_code_key.stdout"
 
 - name: Add the Claude Code apt repository
   ansible.builtin.deb822_repository:

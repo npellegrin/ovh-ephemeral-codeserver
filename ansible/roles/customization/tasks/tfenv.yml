@@ -15,7 +15,7 @@
   ansible.builtin.git:
     repo: https://github.com/tfutils/tfenv.git
     dest: "/home/{{ code_server_user }}/.tfenv"
-    version: "{{ tfenv_version }}"
+    version: "{{ customization_tfenv_version }}"
     depth: 1
   become: true
   become_user: "{{ code_server_user }}"
@@ -36,8 +36,8 @@
   ansible.builtin.command: "/home/{{ code_server_user }}/.tfenv/bin/tfenv install latest"
   become: true
   become_user: "{{ code_server_user }}"
-  register: tfenv_install
-  changed_when: "'already installed' not in tfenv_install.stdout"
+  register: customization_tfenv_install
+  changed_when: "'already installed' not in customization_tfenv_install.stdout"
 
 - name: Select it as the default Terraform version
   ansible.builtin.command: "/home/{{ code_server_user }}/.tfenv/bin/tfenv use latest"

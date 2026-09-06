@@ -11,9 +11,6 @@ skip_list:
   # backup.yml streams tar straight into rclone. The archive/unarchive
   # modules cannot do that and would stage a second full copy on disk.
   - command-instead-of-module
-  # customization sub-task vars (uv_version, rustup_dir, ...) read cleaner
-  # unprefixed and never collide.
-  - var-naming[no-role-prefix]
   # copy/template tasks writing root-owned files under /etc rely on the
   # default mode on purpose; spelling it out everywhere is churn, not safety.
   - risky-file-permissions
