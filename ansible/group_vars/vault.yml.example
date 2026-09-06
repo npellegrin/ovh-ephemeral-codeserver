@@ -5,9 +5,9 @@
 # unencrypted (see AGENTS.md: "Never write secrets in plaintext YAML").
 # Secrets only. Non-secret config goes in vars.yml.
 
-# --- OVH S3 Object Storage (secrets; set by `make generate-vault-vars`) ---
-s3_access_key: "CHANGEME"
-s3_secret_key: "CHANGEME"
+# --- OVH Object Storage backup user (set by `make generate-vault-vars`) ---
+swift_user: "CHANGEME"
+swift_key: "CHANGEME"
 
 # --- code-server (the login password; set by `make generate-vault-vars`) ---
 code_server_password: "CHANGEME"

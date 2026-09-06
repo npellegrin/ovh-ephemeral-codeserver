@@ -23,8 +23,8 @@ why behind each design choice.
 - **Ephemeral lifecycle**: `make create` / `make destroy`; the instance and
   its public IPs are recreated each cycle, nothing stateful lives in the
   ephemeral Terraform stack.
-- **Backup / restore**: `tar` (with exclude list) to OVH S3 Object Storage
-  via rclone; restore only writes back allow-listed paths. Runs
+- **Backup / restore**: `tar` (with exclude list) to OVH Object Storage
+  (rclone over Swift); restore only writes back allow-listed paths. Runs
   automatically on `create` (restore) and `destroy` (backup).
 - **Secrets**: split config, non-secret in `group_vars/vars.yml`, secrets
   in an Ansible Vault-encrypted `group_vars/vault.yml`.

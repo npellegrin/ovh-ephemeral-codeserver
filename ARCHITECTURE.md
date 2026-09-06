@@ -42,18 +42,20 @@ extra data volume attaches separately post-boot.
   (see below) via OVH's own project-user API, not raw OpenStack Identity.
 - **S3 credentials for the Terraform state bucket**: Terraform needs these
   *before* it can run at all (to store its own state), so they can't be
-  created by Terraform itself. Separate from the backups bucket's S3
-  credentials, which `terraform-bootstrap` generates.
+  created by Terraform itself. Unrelated to the backups user below.
 
 ## Least-privilege backup user
 
 A project-scoped OpenStack token can't manage users/roles itself
 (`identity:list_roles` comes back 403 even for an Administrator-role
 user), so `terraform-bootstrap/iam.tf` uses the `ovh` provider's
-`ovh_cloud_project_user` (role `objectstore_operator`) and
-`ovh_cloud_project_user_s3_credential` instead of raw OpenStack Identity
-resources. If the S3 credential ever leaks from the ephemeral instance, it
-can only touch Object Storage, not compute/network/the state bucket.
+`ovh_cloud_project_user` (role `objectstore_operator`) instead of raw
+OpenStack Identity resources. rclone (Ansible) authenticates to Swift with
+that user's generated username/password. The backups container is created
+Swift-side (`openstack_objectstorage_container_v1`); OVH's S3 gateway
+doesn't expose Swift-created containers, so rclone uses `type = swift`, not
+`type = s3`. If the credential leaks from the ephemeral instance it can
+only touch Object Storage, not compute/network/the state bucket.
 
 ## Security group vs nftables
 
@@ -88,13 +90,14 @@ run, neither committed:
 - `terraform-ephemeral/generated.tfvars`: `ovh_project_id`, `compute_region`,
   `keypair_name`, passed via `-var-file` so they can't drift from what
   bootstrap actually created.
-- `ansible/group_vars/vault.yml`: the `generate-vault-vars` Makefile target
-  decrypts it (or reads it as plaintext, before the first encryption),
-  injects `s3_bucket`/`s3_endpoint`/`s3_access_key`/`s3_secret_key` from
-  bootstrap's outputs and a freshly generated `code_server_password` (every
-  run, since the instance is rebuilt every cycle anyway), then re-encrypts.
-  `.vault_pass` (gitignored) holds the vault password so this and every
-  `ansible-playbook` call don't prompt repeatedly.
+- `ansible/group_vars/vars.yml` (plaintext) and `vault.yml` (encrypted):
+  `generate-vault-vars` writes `backup_bucket`/`swift_region`/
+  `swift_tenant_id` into `vars.yml` and the backup user's
+  `swift_user`/`swift_key` plus a freshly generated `code_server_password`
+  into `vault.yml` (decrypt, inject, re-encrypt). The password rotates every
+  run since the instance is rebuilt each cycle anyway. `.vault_pass`
+  (gitignored) holds the vault password so this and every `ansible-playbook`
+  call don't prompt repeatedly.
 
 ## Upgrading code-server
 

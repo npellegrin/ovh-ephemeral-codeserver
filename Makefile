@@ -24,23 +24,25 @@ generate-ephemeral-vars:
 	  echo 'keypair_name   = "'$$(cd terraform-bootstrap && terraform output -raw keypair_name)'"'; \
 	} > terraform-ephemeral/$(EPHEMERAL_TFVARS)
 
-# Injects terraform-bootstrap's S3 outputs.
+# Injects terraform-bootstrap's Object Storage (Swift) outputs
 generate-vault-vars:
 	@test -f $(VARS_FILE) || { echo "Error: $(VARS_FILE) not found. Run: cp ansible/group_vars/vars.yml.example $(VARS_FILE), fill it in, then retry."; exit 1; }
 	@test -f $(VAULT_FILE) || { echo "Error: $(VAULT_FILE) not found. Run: cp ansible/group_vars/vault.yml.example $(VAULT_FILE), fill in the manual secrets, then retry."; exit 1; }
-	@S3_BUCKET=$$(cd terraform-bootstrap && terraform output -raw s3_bucket_name) && \
-	S3_ENDPOINT=$$(cd terraform-bootstrap && terraform output -raw backup_s3_endpoint) && \
-	S3_ACCESS_KEY=$$(cd terraform-bootstrap && terraform output -raw backup_s3_access_key) && \
-	S3_SECRET_KEY=$$(cd terraform-bootstrap && terraform output -raw backup_s3_secret_key) && \
+	@BUCKET=$$(cd terraform-bootstrap && terraform output -raw backup_bucket_name) && \
+	SWIFT_REGION=$$(cd terraform-bootstrap && terraform output -raw swift_region) && \
+	SWIFT_TENANT_ID=$$(cd terraform-bootstrap && terraform output -raw swift_tenant_id) && \
+	SWIFT_USER=$$(cd terraform-bootstrap && terraform output -raw swift_username) && \
+	SWIFT_KEY=$$(cd terraform-bootstrap && terraform output -raw swift_password | sed -e 's/[|&\\]/\\&/g') && \
 	sed -i \
-	  -e "s|^s3_bucket:.*|s3_bucket: \"$$S3_BUCKET\"|" \
-	  -e "s|^s3_endpoint:.*|s3_endpoint: \"$$S3_ENDPOINT\"|" \
+	  -e "s|^backup_bucket:.*|backup_bucket: \"$$BUCKET\"|" \
+	  -e "s|^swift_region:.*|swift_region: \"$$SWIFT_REGION\"|" \
+	  -e "s|^swift_tenant_id:.*|swift_tenant_id: \"$$SWIFT_TENANT_ID\"|" \
 	  $(VARS_FILE) && \
 	(ansible-vault view $(VAULT_ARGS) $(VAULT_FILE) > /tmp/vault_plain.yml 2>/dev/null || cp $(VAULT_FILE) /tmp/vault_plain.yml) && \
 	NEW_PASS=$$(head -c32 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c32) && \
 	sed -i \
-	  -e "s|^s3_access_key:.*|s3_access_key: \"$$S3_ACCESS_KEY\"|" \
-	  -e "s|^s3_secret_key:.*|s3_secret_key: \"$$S3_SECRET_KEY\"|" \
+	  -e "s|^swift_user:.*|swift_user: \"$$SWIFT_USER\"|" \
+	  -e "s|^swift_key:.*|swift_key: \"$$SWIFT_KEY\"|" \
 	  -e "s|^code_server_password:.*|code_server_password: \"$$NEW_PASS\"|" \
 	  /tmp/vault_plain.yml && \
 	ansible-vault encrypt $(VAULT_ARGS) --output=$(VAULT_FILE) /tmp/vault_plain.yml && \

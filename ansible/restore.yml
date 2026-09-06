@@ -1,5 +1,5 @@
 ---
-- name: Restore data from OVH S3 Object Storage
+- name: Restore data from OVH Object Storage
   hosts: dev_servers
   become: yes
   vars_files:
@@ -18,23 +18,29 @@
         state: directory
         mode: '0700'
 
-    - name: Configure rclone for OVH Object Storage
+    - name: Configure rclone for OVH Object Storage (Swift)
       copy:
         dest: /root/.config/rclone/rclone.conf
         content: |
-          [ovh-s3]
-          type = s3
-          provider = Other
-          access_key_id = {{ s3_access_key }}
-          secret_access_key = {{ s3_secret_key }}
-          endpoint = {{ s3_endpoint }}
+          [ovh]
+          type = swift
+          env_auth = false
+          auth_version = 3
+          auth = {{ swift_auth }}
+          user = {{ swift_user }}
+          key = {{ swift_key }}
+          tenant_id = {{ swift_tenant_id }}
+          domain = default
+          tenant_domain = default
+          region = {{ swift_region }}
+          endpoint_type = public
         mode: '0600'
       no_log: true
 
-    # rc=3 / "directory not found" means the bucket has no backups yet
+    # rc=3 / "directory not found" means the container has no backups yet
     # (first run); anything else is a real error.
     - name: Find the latest backup
-      command: rclone lsf ovh-s3:{{ s3_bucket }}/ --format "t" --files-only
+      command: rclone lsf ovh:{{ backup_bucket }}/ --format "t" --files-only
       register: backup_list
       changed_when: false
       failed_when:
@@ -47,7 +53,7 @@
 
     - name: Skip restore when there is no backup
       debug:
-        msg: "No backup found in {{ s3_bucket }}, nothing to restore."
+        msg: "No backup found in {{ backup_bucket }}, nothing to restore."
       when: latest_backup | length == 0
 
     - name: Restore from the latest backup
@@ -55,7 +61,7 @@
       block:
         - name: Download the latest backup
           command: >
-            rclone copy ovh-s3:{{ s3_bucket }}/{{ latest_backup }} /tmp/
+            rclone copy ovh:{{ backup_bucket }}/{{ latest_backup }} /tmp/
 
         - name: Deploy the safe extraction script
           template:

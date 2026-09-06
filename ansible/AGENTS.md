@@ -16,9 +16,13 @@ Provisioning (`site.yml`), backup (`backup.yml`), restore (`restore.yml`).
   its AGENTS.md). Keep the ICMPv6/NDP accept rules: without them IPv6 breaks.
 - Two group_vars files, both gitignored, both loaded by every playbook via
   `vars_files`: `vars.yml` (plaintext, non-secret config) and `vault.yml`
-  (Ansible Vault-encrypted, secrets only: `s3_access_key`, `s3_secret_key`,
+  (Ansible Vault-encrypted, secrets only: `swift_user`, `swift_key`,
   `code_server_password`). Secrets go in `vault.yml`. Never write secrets in
   plaintext YAML. New non-secret vars go in `vars.yml`.
+- backup/restore reach Object Storage through rclone's Swift backend (the
+  container is created Swift-side by terraform-bootstrap; the S3 gateway
+  doesn't see it). Auth uses the bootstrap backup user's OpenStack
+  username/password, not S3 keys.
 - Backup/restore playbooks must remain idempotent and safe to re-run.
 - Do not read `inventory/generated.ini` as a source of truth for code
   changes — it's a generated artifact, not meant to be edited or reviewed.

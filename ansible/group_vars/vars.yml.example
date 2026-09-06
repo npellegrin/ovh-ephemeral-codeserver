@@ -1,12 +1,14 @@
 ---
 # Copy to group_vars/vars.yml and fill in the values. Non-secret only;
 # secrets go in vault.yml. group_vars/vars.yml is gitignored.
-# `make generate-vault-vars` rewrites s3_endpoint / s3_bucket from
-# terraform-bootstrap outputs.
+# `make generate-vault-vars` rewrites backup_bucket / swift_region /
+# swift_tenant_id from terraform-bootstrap outputs.
 
-# --- OVH S3 Object Storage (non-secret) ---
-s3_endpoint: "https://s3.<region>.io.cloud.ovh.net"
-s3_bucket: "CHANGEME"
+# --- OVH Object Storage (Swift), non-secret ---
+swift_auth: "https://auth.cloud.ovh.net/v3"
+swift_region: "GRA"
+swift_tenant_id: "CHANGEME"
+backup_bucket: "CHANGEME"
 
 # --- code-server ---
 code_server_user: "dev"

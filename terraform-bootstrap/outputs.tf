@@ -12,24 +12,30 @@ output "compute_region" {
   value       = var.compute_region
 }
 
-output "s3_bucket_name" {
-  description = "Backups bucket name. Copy into ansible/group_vars/vault.yml as s3_bucket_name."
+# Backups Object Storage, read by the Makefile's generate-vault-vars target.
+output "backup_bucket_name" {
+  description = "Swift container name for backups."
   value       = openstack_objectstorage_container_v1.backup_bucket.name
 }
 
-output "backup_s3_endpoint" {
-  description = "OVH Object Storage S3 endpoint for the backups bucket's region."
-  value       = "https://s3.${lower(var.object_storage_region)}.io.cloud.ovh.net"
+output "swift_region" {
+  description = "Object Storage region for the backups container."
+  value       = var.object_storage_region
 }
 
-output "backup_s3_access_key" {
-  description = "S3 access key for the backups bucket. Copy into ansible/group_vars/vault.yml as s3_access_key."
-  value       = ovh_cloud_project_user_s3_credential.backup_s3.access_key_id
+output "swift_tenant_id" {
+  description = "OpenStack project (tenant) id, used for Keystone v3 auth."
+  value       = var.ovh_project_id
 }
 
-output "backup_s3_secret_key" {
-  description = "S3 secret key for the backups bucket. Copy into ansible/group_vars/vault.yml as s3_secret_key."
-  value       = ovh_cloud_project_user_s3_credential.backup_s3.secret_access_key
+output "swift_username" {
+  description = "Backup user's OpenStack username."
+  value       = ovh_cloud_project_user.backup_user.username
+}
+
+output "swift_password" {
+  description = "Backup user's OpenStack password."
+  value       = ovh_cloud_project_user.backup_user.password
   sensitive   = true
 }
 
