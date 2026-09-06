@@ -21,6 +21,9 @@ Provisioning (`site.yml`), backup (`backup.yml`), restore (`restore.yml`).
   container is created Swift-side by terraform-bootstrap; the S3 gateway
   doesn't see it). Auth uses the backup user's OpenStack username/password,
   not S3 keys.
+- backup/restore write the rclone config (Swift credentials) inside a
+  `block` whose `always` deletes it. Keep that structure; don't leave the
+  credentials on disk after the run.
 - backup/restore playbooks must stay idempotent and safe to re-run.
 - Don't treat `inventory/generated.ini` as source of truth. Don't read
   `*.retry` files.

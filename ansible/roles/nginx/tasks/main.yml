@@ -12,6 +12,14 @@
     path: /etc/nginx/sites-enabled/default
     state: absent
 
+- name: Define the login rate-limit zone
+  copy:
+    dest: /etc/nginx/conf.d/code-server-limits.conf
+    content: |
+      # Shared by the code-server vhost's `location = /login`.
+      limit_req_zone $binary_remote_addr zone=cs_login:10m rate=10r/m;
+  notify: restart nginx
+
 - name: Ensure the ACME webroot exists
   file:
     path: /var/www/html

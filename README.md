@@ -17,9 +17,9 @@ why behind each design choice.
 - **IP filtering**: nftables allowlists per port (SSH/HTTP/HTTPS), separate
   IPv4 and IPv6 CIDR lists, plus the mandatory ICMPv6/NDP rules. Optionally
   mirrored at the OpenStack layer via a security group.
-- **Hardening**: SSH key-only (no root, no password), fail2ban on SSH,
-  unattended security upgrades, sysctl tightening, rare-protocol module
-  blacklist.
+- **Hardening**: SSH key-only (no root, no password), fail2ban on SSH and
+  on the code-server login, nginx rate-limit on `/login`, unattended
+  security upgrades, sysctl tightening, rare-protocol module blacklist.
 - **Ephemeral lifecycle**: `make create` / `make destroy`; the instance and
   its public IPs are recreated each cycle, nothing stateful lives in the
   ephemeral Terraform stack.
@@ -112,8 +112,13 @@ project, a domain name, a local SSH keypair.
   your API token lacks `/domain/zone/*` rights; recreate it (step 2) or
   set `manage_dns = false`.
 
-## License: GNU Affero General Public License v3.0
+## License
 
-This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+GNU Affero General Public License v3.0. See [LICENSE](LICENSE).
 
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. License Implications
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or (at your
+option) any later version. It is distributed WITHOUT ANY WARRANTY; without
+even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+PURPOSE. See the license for details.

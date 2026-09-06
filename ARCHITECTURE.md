@@ -25,9 +25,9 @@ state.
 ## No network gateway
 
 The instance attaches directly to OVH's `Ext-Net` (`image_id` +
-`network { uuid = ... }` on `openstack_compute_instance_v2`. A router
-with an external gateway provisions a billed OVH "Gateway" that would
-run continuously in the always-on bootstrap stack.
+`network { uuid = ... }` on `openstack_compute_instance_v2`, no floating
+IP or router). A router with an external gateway provisions a billed OVH
+"Gateway" that would run continuously in the always-on bootstrap stack.
 
 ## OVH credentials: three separate sets
 
@@ -50,7 +50,11 @@ user's generated username/password.
 The backups container is created Swift-side
 (`openstack_objectstorage_container_v1`). OVH's S3 gateway doesn't expose
 Swift-created containers, so rclone uses `type = swift`. A leaked
-credential from the instance can only touch Object Storage.
+credential from the instance can only touch Object Storage, but Object
+Storage holds full tarballs of the dev user's home directory, so treat it
+as sensitive. `backup.yml` / `restore.yml` write the rclone config
+(credentials) only for the run and delete it in an `always` block;
+`*/.config/rclone` is also in `backup_excludes`.
 
 ## Security group vs nftables
 
@@ -66,6 +70,14 @@ IPv4 defaults to `0.0.0.0/0`, IPv6 to `::/0`. SSH isn't restricted by
 default: narrowing it risks a self-lockout if your address changes. Once
 quota allows it, `create_security_group = true` adds the same filtering at
 the OpenStack level.
+
+Since HTTPS is open by default, the code-server login has app-layer
+protection too: nginx `limit_req` on `/login` (zone in
+`conf.d/code-server-limits.conf`) and a fail2ban jail reading a dedicated
+`/var/log/nginx/code-server-login.log`. fail2ban bans via `nftables-*`
+actions (`banaction` in `jail.local`) since the box has no iptables, and
+`/etc/nftables.conf` replaces only its own table (not `flush ruleset`) so
+reloading it keeps fail2ban's bans.
 
 ## Let's Encrypt needs port 80 open
 
@@ -109,10 +121,12 @@ see `ansible/roles/code-server/tasks/main.yml`. To bump:
 ## Security notes
 
 - Root SSH login disabled, key-only auth
-- fail2ban on sshd
+- fail2ban on sshd and on the code-server login, plus nginx `limit_req`
+  on `/login`
 - Automatic security updates enabled
 - TLS-only for code-server (nginx + Let's Encrypt)
 - Secrets via Ansible Vault, never committed in plaintext
+- Swift credentials on the instance are removed after each backup/restore
 - `backend.tfvars` contains no secrets and is safe to commit
 - `terraform-bootstrap`'s state holds the backups bucket's S3 secret key in
   plaintext (Terraform state always does). Treat state bucket access as

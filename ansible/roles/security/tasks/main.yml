@@ -41,7 +41,10 @@
     dest: /etc/nftables.conf
     content: |
       #!/usr/sbin/nft -f
-      flush ruleset
+      # Replace only our own table, so reloading this file doesn't wipe
+      # fail2ban's separate table (and its active bans).
+      add table inet filter
+      delete table inet filter
 
       table inet filter {
         chain input {
@@ -98,10 +101,40 @@
     enabled: yes
     state: started
 
-- name: Configure fail2ban for SSH
+# fail2ban's nginx access-log jail needs its log file to exist at startup;
+# the nginx role fills it once code-server is reachable.
+- name: Ensure the nginx log directory exists
+  file:
+    path: /var/log/nginx
+    state: directory
+    mode: "0755"
+
+- name: Ensure the code-server login log exists
+  file:
+    path: /var/log/nginx/code-server-login.log
+    state: touch
+    mode: "0640"
+    access_time: preserve
+    modification_time: preserve
+
+- name: Install the code-server fail2ban filter
+  copy:
+    dest: /etc/fail2ban/filter.d/code-server.conf
+    content: |
+      [Definition]
+      failregex = ^<HOST> -.*"POST /login(\?\S*)? HTTP/[0-9.]+" \d+
+      ignoreregex =
+  notify: restart fail2ban
+
+- name: Configure fail2ban
   copy:
     dest: /etc/fail2ban/jail.local
     content: |
+      [DEFAULT]
+      # The box filters with nftables only, no iptables binary.
+      banaction = nftables-multiport
+      banaction_allports = nftables-allports
+
       [sshd]
       enabled = true
       port = 22
@@ -110,6 +143,15 @@
       maxretry = 3
       bantime = 3600
       findtime = 600
+
+      [code-server]
+      enabled = true
+      port = http,https
+      filter = code-server
+      logpath = /var/log/nginx/code-server-login.log
+      maxretry = 8
+      findtime = 300
+      bantime = 3600
   notify: restart fail2ban
 
 - name: Enable fail2ban

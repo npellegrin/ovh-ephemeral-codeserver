@@ -24,7 +24,7 @@ variable "instance_flavor" {
 variable "instance_image" {
   description = "Base operating system image"
   type        = string
-  default     = "Debian 12"
+  default     = "Debian 13"
 }
 
 variable "volume_size_gb" {

@@ -22,40 +22,49 @@
         state: directory
         mode: '0700'
 
-    - name: Configure rclone for OVH Object Storage (Swift)
-      copy:
-        dest: /root/.config/rclone/rclone.conf
-        content: |
-          [ovh]
-          type = swift
-          env_auth = false
-          auth_version = 3
-          auth = {{ swift_auth }}
-          user = {{ swift_user }}
-          key = {{ swift_key }}
-          tenant_id = {{ swift_tenant_id }}
-          domain = default
-          tenant_domain = default
-          region = {{ swift_region }}
-          endpoint_type = public
-        mode: '0600'
-      no_log: true
+    # The rclone config holds the Swift credentials; it is rewritten on
+    # every run, so the always block wipes it (and the archive) afterwards.
+    - name: Run the backup
+      block:
+        - name: Configure rclone for OVH Object Storage (Swift)
+          copy:
+            dest: /root/.config/rclone/rclone.conf
+            content: |
+              [ovh]
+              type = swift
+              env_auth = false
+              auth_version = 3
+              auth = {{ swift_auth }}
+              user = {{ swift_user }}
+              key = {{ swift_key }}
+              tenant_id = {{ swift_tenant_id }}
+              domain = default
+              tenant_domain = default
+              region = {{ swift_region }}
+              endpoint_type = public
+            mode: '0600'
+          no_log: true
 
-    - name: Create the backup archive
-      shell: >
-        tar
-        {% for exclude in backup_excludes %}--exclude='{{ exclude }}' {% endfor %}
-        -czf {{ backup_tmp_path }}
-        {% for path in backup_paths %}{{ path }} {% endfor %}
+        - name: Create the backup archive
+          shell: >
+            tar
+            {% for exclude in backup_excludes %}--exclude='{{ exclude }}' {% endfor %}
+            -czf {{ backup_tmp_path }}
+            {% for path in backup_paths %}{{ path }} {% endfor %}
 
-    - name: Upload the archive to Object Storage
-      command: rclone copy {{ backup_tmp_path }} ovh:{{ backup_bucket }}/
+        - name: Upload the archive to Object Storage
+          command: rclone copy {{ backup_tmp_path }} ovh:{{ backup_bucket }}/
 
-    - name: Remove the local temporary archive
-      file:
-        path: "{{ backup_tmp_path }}"
-        state: absent
+        - name: Confirm the backup
+          debug:
+            msg: "Backup completed: {{ backup_filename }} uploaded to {{ backup_bucket }}"
+      always:
+        - name: Remove the rclone credentials (regenerated every run)
+          file:
+            path: /root/.config/rclone/rclone.conf
+            state: absent
 
-    - name: Confirm the backup
-      debug:
-        msg: "Backup completed: {{ backup_filename }} uploaded to {{ backup_bucket }}"
+        - name: Remove the local temporary archive
+          file:
+            path: "{{ backup_tmp_path }}"
+            state: absent

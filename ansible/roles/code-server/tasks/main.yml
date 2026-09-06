@@ -5,20 +5,26 @@
     shell: /bin/bash
     create_home: yes
 
+- name: Create a temp file for the code-server package
+  tempfile:
+    state: file
+    suffix: .deb
+  register: code_server_deb
+
 - name: Download the pinned code-server .deb package
   get_url:
     url: "https://github.com/coder/code-server/releases/download/v{{ code_server_version }}/code-server_{{ code_server_version }}_amd64.deb"
-    dest: "/tmp/code-server_{{ code_server_version }}_amd64.deb"
+    dest: "{{ code_server_deb.path }}"
     checksum: "sha256:{{ code_server_deb_sha256 }}"
-    mode: '0644'
+    mode: '0600'
 
 - name: Install code-server from the verified package
   apt:
-    deb: "/tmp/code-server_{{ code_server_version }}_amd64.deb"
+    deb: "{{ code_server_deb.path }}"
 
 - name: Remove the downloaded package
   file:
-    path: "/tmp/code-server_{{ code_server_version }}_amd64.deb"
+    path: "{{ code_server_deb.path }}"
     state: absent
 
 - name: Create the configuration directory

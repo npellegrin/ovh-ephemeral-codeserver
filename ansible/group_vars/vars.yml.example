@@ -41,3 +41,5 @@ backup_paths:
 backup_excludes:
   - "*/.cache"
   - "*/node_modules"
+  # rclone's Swift credentials, regenerated every run. Never back them up.
+  - "*/.config/rclone"
