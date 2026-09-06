@@ -1,4 +1,4 @@
-.PHONY: bootstrap create destroy backup restore ssh-wait check-secret-perms generate-ephemeral-vars generate-vault-vars generate-swift-vars code-server-url code-server-password
+.PHONY: bootstrap create destroy backup restore ssh-wait check-secret-perms generate-ephemeral-vars generate-vault-vars rotate-code-server-password generate-swift-vars code-server-url code-server-password
 
 # group_vars/vault.yml is Ansible Vault-encrypted
 VAULT_ARGS ?= --vault-password-file $(CURDIR)/.vault_pass
@@ -46,8 +46,12 @@ generate-vault-vars: check-secret-perms
 	  -e "s|^backup_bucket:.*|backup_bucket: \"$$BUCKET\"|" \
 	  -e "s|^swift_region:.*|swift_region: \"$$SWIFT_REGION\"|" \
 	  -e "s|^swift_tenant_id:.*|swift_tenant_id: \"$$SWIFT_TENANT_ID\"|" \
-	  $(VARS_FILE) && \
-	PLAIN=$$(mktemp) && SCRIPT=$$(mktemp) && chmod 600 "$$PLAIN" "$$SCRIPT" && \
+	  $(VARS_FILE)
+
+# Rotates the code-server login password. Only `create` depends on this.
+rotate-code-server-password: check-secret-perms
+	@test -f $(VAULT_FILE) || { echo "Error: $(VAULT_FILE) not found. Run: cp ansible/group_vars/vault.yml.example $(VAULT_FILE), fill in the manual secrets, then retry."; exit 1; }
+	@PLAIN=$$(mktemp) && SCRIPT=$$(mktemp) && chmod 600 "$$PLAIN" "$$SCRIPT" && \
 	trap 'rm -f "$$PLAIN" "$$SCRIPT"' EXIT INT TERM && \
 	if head -n1 $(VAULT_FILE) | grep -q '^\$$ANSIBLE_VAULT'; then \
 	  ansible-vault view $(VAULT_ARGS) $(VAULT_FILE) > "$$PLAIN"; \
@@ -58,7 +62,7 @@ generate-vault-vars: check-secret-perms
 	printf '%s\n' "s|^code_server_password:.*|code_server_password: \"$$NEW_PASS\"|" > "$$SCRIPT" && \
 	sed -i -f "$$SCRIPT" "$$PLAIN" && \
 	ansible-vault encrypt $(VAULT_ARGS) --output=$(VAULT_FILE) "$$PLAIN" && \
-	echo "code_server_password set. View it with: ansible-vault view $(VAULT_ARGS) $(VAULT_FILE)"
+	echo "code_server_password rotated. Read it with: make -s code-server-password"
 
 # Injects terraform-ephemeral's backup-user credentials into Ansible vault.
 generate-swift-vars: check-secret-perms
@@ -78,7 +82,7 @@ generate-swift-vars: check-secret-perms
 	sed -i -f "$$SCRIPT" "$$PLAIN" && \
 	ansible-vault encrypt $(VAULT_ARGS) --output=$(VAULT_FILE) "$$PLAIN"
 
-create: generate-ephemeral-vars generate-vault-vars
+create: generate-ephemeral-vars generate-vault-vars rotate-code-server-password
 	cd terraform-ephemeral && terraform init -input=false -backend-config=backend.tfvars
 	cd terraform-ephemeral && terraform apply -input=false -var-file=terraform.tfvars -var-file=$(EPHEMERAL_TFVARS)
 	$(MAKE) generate-swift-vars
@@ -117,7 +121,7 @@ code-server-url:
 code-server-password:
 	@test -f $(VAULT_FILE) || { echo "Error: $(VAULT_FILE) not found." >&2; exit 1; }
 	@PASS=$$($(vault_code_server_password)); \
-	test -n "$$PASS" || { echo "Error: no code_server_password in $(VAULT_FILE). Run: make generate-vault-vars" >&2; exit 1; }; \
+	test -n "$$PASS" || { echo "Error: no code_server_password in $(VAULT_FILE). Run: make rotate-code-server-password" >&2; exit 1; }; \
 	echo "$$PASS"
 
 ssh-wait:

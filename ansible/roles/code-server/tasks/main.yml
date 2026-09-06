@@ -42,6 +42,7 @@
     owner: "{{ code_server_user }}"
     group: "{{ code_server_user }}"
     mode: '0600'
+  notify: restart code-server
 
 - name: Create the systemd service
   copy:
@@ -61,6 +62,7 @@
 
       [Install]
       WantedBy=multi-user.target
+  notify: restart code-server
 
 - name: Enable and start code-server
   systemd:
