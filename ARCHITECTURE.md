@@ -117,7 +117,7 @@ IPv6, so a broken IPv6 path also breaks renewal.
 ## Upgrading code-server
 
 Installs from a pinned, checksummed `.deb` release asset (no `curl | sh`),
-see `ansible/roles/code-server/tasks/main.yml`. To bump:
+see `ansible/roles/code_server/tasks/main.yml`. To bump:
 
 1. Pick the target release tag from
    [github.com/coder/code-server/releases](https://github.com/coder/code-server/releases).
@@ -125,7 +125,7 @@ see `ansible/roles/code-server/tasks/main.yml`. To bump:
    `curl -s https://api.github.com/repos/coder/code-server/releases/tags/v<version> | jq -r '.assets[] | select(.name == "code-server_<version>_amd64.deb") | .digest'`
    (strip the `sha256:` prefix), or `sha256sum` the downloaded `.deb`.
 3. Update `code_server_version` and `code_server_deb_sha256` in
-   `ansible/roles/code-server/defaults/main.yml`.
+   `ansible/roles/code_server/defaults/main.yml`.
 4. Re-run `make create`. `get_url` fails closed on a checksum mismatch.
 
 ## Security notes

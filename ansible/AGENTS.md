@@ -4,7 +4,7 @@ Provisioning (`site.yml`), backup (`backup.yml`), restore (`restore.yml`).
 
 ## Rules
 
-- Roles are additive: `security`, `nginx`, `code-server` are fixed. New
+- Roles are additive: `security`, `nginx`, `code_server` are fixed. New
   customization goes into the `customization` role only, as one task file
   per tool, included from `tasks/main.yml` behind a `customization_<tool>`
   flag defaulting to `false` in `roles/customization/defaults/main.yml`.

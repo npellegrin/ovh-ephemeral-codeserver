@@ -9,5 +9,5 @@
   roles:
     - security
     - nginx
-    - code-server
+    - code_server
     - customization
