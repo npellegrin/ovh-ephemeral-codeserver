@@ -7,34 +7,15 @@ why behind each design choice.
 
 ## Features
 
-- **code-server**: VS Code in the browser, pinned version installed from
-  the official `.deb` with checksum verification, password auth, bound to
-  localhost behind nginx.
-- **HTTPS**: nginx reverse proxy, Let's Encrypt certificate via the ACME
-  HTTP-01 webroot challenge, auto-renewal with an nginx-reload deploy hook.
-- **Dual-stack IPv4 + IPv6**: nginx listens on both; optional Terraform
-  management of the OVH DNS `A`/`AAAA` records.
-- **IP filtering**: nftables allowlists per port (SSH/HTTP/HTTPS), separate
-  IPv4 and IPv6 CIDR lists, plus the mandatory ICMPv6/NDP rules. Optionally
-  mirrored at the OpenStack layer via a security group.
-- **Hardening**: SSH key-only (no root, no password), fail2ban on SSH and
-  on the code-server login, nginx rate-limit on `/login`, unattended
-  security upgrades, sysctl tightening, rare-protocol module blacklist.
-- **Ephemeral lifecycle**: `make create` / `make destroy`; the instance and
-  its public IPs are recreated each cycle, nothing stateful lives in the
-  ephemeral Terraform stack.
-- **Backup / restore**: `tar` (with exclude list) to OVH Object Storage
-  (rclone over Swift), staged through a private temp file; backup aborts if
-  the archive would not fit on disk. Restore only writes back allow-listed
-  paths. Runs automatically on `create` (restore) and `destroy` (backup).
-- **Secrets**: split config, non-secret in `group_vars/vars.yml`, secrets
-  in an Ansible Vault-encrypted `group_vars/vault.yml`.
-- **Optional dev tooling**: the Ansible `customization` role ships one
-  toggle per tool, all off by default: Terraform plugin cache, tfenv, uv
-  (+ CPython 3.13/3.14), nvm, rustup/cargo, Docker + Compose, Claude Code
-  CLI + ripgrep. Pinned and checksum- or signature-verified, and their
-  toolchain directories are excluded from backups since every provision
-  reinstalls them.
+- **code-server**: Code in the browser, pinned version + checksum verification
+- **HTTPS**: nginx reverse proxy + Let's Encrypt certificate
+- **Dual-stack IPv4 + IPv6**: Terraform management of the OVH DNS `A`/`AAAA` records
+- **IP filtering**: nftables allowlists per port (SSH/HTTP/HTTPS)
+- **Hardening**: SSH key-only, fail2ban on SSH and code-server login, nginx rate-limit on `/login`, unattended security upgrades, sysctl tightening, rare-protocol module blacklist.
+- **Ephemeral lifecycle**: `make create` / `make destroy`; the instance and public IPs are recreated each cycle
+- **Backup / restore**: `tar` to OVH Object Storage. Runs automatically on `create` (restore) and `destroy` (backup) Makefile targets.
+- **Secrets**: non-secret in `group_vars/vars.yml`, secrets in an Ansible Vault-encrypted `group_vars/vault.yml`.
+- **Optional dev tooling**: Ansible `customization` role ships dev tools with feature-toggling from `group_vars/vars.yml`
 
 ## Setup
 
