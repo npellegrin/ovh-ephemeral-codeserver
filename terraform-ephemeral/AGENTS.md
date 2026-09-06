@@ -15,6 +15,9 @@ group. Destroyed and recreated daily.
 - Any resource added here must be safe to destroy without data loss — if it
   holds state, it belongs in `terraform-bootstrap/` instead.
 - `ovh` provider is allowed here only for DNS record automation, nothing else.
+  Gated behind `manage_dns` (default `false`); when off, `make create` pauses
+  for a manual DNS update before Ansible. `dns_subdomain`+`dns_zone` must
+  resolve to ansible's `domain_name`.
 - Do not read `.terraform/`, `*.tfstate*`, `.terraform.lock.hcl`.
 - Output values consumed by Ansible (`public_ip`, etc.) must stay stable in
   name and type — Ansible inventory generation depends on them.

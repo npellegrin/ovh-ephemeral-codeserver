@@ -51,6 +51,12 @@ create: generate-ephemeral-vars generate-vault-vars
 	cd terraform-ephemeral && terraform init -input=false -backend-config=backend.tfvars
 	cd terraform-ephemeral && terraform apply -input=false -var-file=terraform.tfvars -var-file=$(EPHEMERAL_TFVARS)
 	$(MAKE) ssh-wait
+	@if [ "$$(cd terraform-ephemeral && terraform output -raw dns_managed)" != "true" ]; then \
+	  IP=$$(cd terraform-ephemeral && terraform output -raw public_ip); \
+	  echo "DNS is not managed by Terraform. Point your A record at $$IP now,"; \
+	  echo "otherwise Let's Encrypt will fail in the next step."; \
+	  read -p "Press enter to continue once DNS is set... " REPLY; \
+	fi
 	cd ansible && ansible-playbook -i inventory/generated.ini site.yml $(VAULT_ARGS)
 	cd ansible && ansible-playbook -i inventory/generated.ini restore.yml $(VAULT_ARGS)
 

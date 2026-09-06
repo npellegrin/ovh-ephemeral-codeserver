@@ -56,3 +56,27 @@ variable "allowed_http_cidrs" {
   type        = list(string)
   default     = ["0.0.0.0/0"] # Public HTTP by default; restrict if needed.
 }
+
+variable "manage_dns" {
+  description = "Create/update an A record in an OVH DNS zone pointing at the instance IP. false: point DNS yourself (make create pauses to let you do it)."
+  type        = bool
+  default     = false
+}
+
+variable "dns_zone" {
+  description = "OVH DNS zone, e.g. example.com. Required when manage_dns = true."
+  type        = string
+  default     = ""
+}
+
+variable "dns_subdomain" {
+  description = "Record name within the zone, e.g. code for code.example.com. Must match ansible domain_name. Empty targets the apex."
+  type        = string
+  default     = ""
+}
+
+variable "dns_ttl" {
+  description = "TTL (seconds) for the managed A record."
+  type        = number
+  default     = 60
+}

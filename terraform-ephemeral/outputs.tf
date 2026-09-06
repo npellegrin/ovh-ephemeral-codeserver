@@ -9,3 +9,9 @@ output "public_ip" {
 output "volume_id" {
   value = openstack_blockstorage_volume_v3.dev_volume.id
 }
+
+# Consumed by the Makefile to decide whether `make create` pauses for a
+# manual DNS update before running Ansible.
+output "dns_managed" {
+  value = var.manage_dns
+}

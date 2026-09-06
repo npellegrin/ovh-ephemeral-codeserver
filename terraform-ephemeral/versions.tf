@@ -12,5 +12,9 @@ terraform {
       source  = "hashicorp/local"
       version = "~> 2.9"
     }
+    ovh = {
+      source  = "ovh/ovh"
+      version = "~> 2.0"
+    }
   }
 }

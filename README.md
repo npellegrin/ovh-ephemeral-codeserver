@@ -41,7 +41,7 @@ project, a domain name, a local SSH keypair.
    ```bash
    cd terraform-ephemeral
    cp backend.tfvars.example backend.tfvars      # same state bucket, different key
-   cp terraform.tfvars.example terraform.tfvars  # adjust instance_flavor/instance_image/volume_size_gb
+   cp terraform.tfvars.example terraform.tfvars  # adjust variables after copy
    cd ..
    ```
 
@@ -60,8 +60,6 @@ project, a domain name, a local SSH keypair.
    make create    # provision instance, restore last backup, ready to work
    make destroy   # backup current state, destroy instance
    ```
-   After the first `make create`, point `domain_name`'s A record at the
-   printed public IP (see Troubleshooting: it changes every cycle).
 
 ## Troubleshooting
 
@@ -76,7 +74,8 @@ project, a domain name, a local SSH keypair.
   must exactly match an active image name for your region.
 - **Let's Encrypt fails on `make create`**: the public IP changes every
   cycle; your DNS A record must point at the new one before Ansible
-  reaches the nginx role.
+  reaches the nginx role. Use `manage_dns = true` or update it during the
+  pause.
 - **`make` keeps asking for the vault password**: create `.vault_pass`
   (step 6 above).
 

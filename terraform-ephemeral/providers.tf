@@ -7,3 +7,7 @@ provider "openstack" {
   tenant_id   = var.ovh_project_id
   domain_name = "default"
 }
+
+# ovh: auth via OVH_ENDPOINT/OVH_APPLICATION_KEY/OVH_APPLICATION_SECRET/OVH_CONSUMER_KEY
+# Unused when manage_dns = false.
+provider "ovh" {}
