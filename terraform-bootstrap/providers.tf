@@ -10,4 +10,7 @@ provider "openstack" {
 
 # ovh: auth via OVH_ENDPOINT/OVH_APPLICATION_KEY/OVH_APPLICATION_SECRET/
 # OVH_CONSUMER_KEY env vars, or ~/.ovh.conf. Both documented in the README.
+# No resource uses it any more (the backup user moved to terraform-ephemeral);
+# kept so the next apply can destroy the one left in this stack's state.
+# Droppable, with the ovh entry in versions.tf, once that apply has run.
 provider "ovh" {}

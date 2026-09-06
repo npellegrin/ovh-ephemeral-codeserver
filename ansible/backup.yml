@@ -8,6 +8,21 @@
 
   vars:
     backup_filename: "backup-{{ ansible_date_time.iso8601_basic_short }}.tar.gz"
+    # rclone reads a whole remote definition from the environment, so the Swift
+    # credentials never land in a config file on the instance. Applied only to
+    # the tasks that talk to Object Storage.
+    rclone_env:
+      RCLONE_CONFIG_OVH_TYPE: swift
+      RCLONE_CONFIG_OVH_ENV_AUTH: "false"
+      RCLONE_CONFIG_OVH_AUTH_VERSION: "3"
+      RCLONE_CONFIG_OVH_AUTH: "{{ swift_auth }}"
+      RCLONE_CONFIG_OVH_USER: "{{ swift_user }}"
+      RCLONE_CONFIG_OVH_KEY: "{{ swift_key }}"
+      RCLONE_CONFIG_OVH_TENANT_ID: "{{ swift_tenant_id }}"
+      RCLONE_CONFIG_OVH_DOMAIN: default
+      RCLONE_CONFIG_OVH_TENANT_DOMAIN: default
+      RCLONE_CONFIG_OVH_REGION: "{{ swift_region }}"
+      RCLONE_CONFIG_OVH_ENDPOINT_TYPE: public
 
   tasks:
     - name: Install rclone
@@ -15,20 +30,13 @@
         name: rclone
         state: present
 
-    - name: Ensure the rclone config directory exists
-      file:
-        path: /root/.config/rclone
-        state: directory
-        mode: '0700'
-
     - name: Create a temp file for the backup archive
       tempfile:
         state: file
         suffix: .tar.gz
       register: backup_archive
 
-    # The rclone config holds the Swift credentials; it is rewritten on
-    # every run, so the always block wipes it (and the archive) afterwards.
+    # The always block removes the archive whether or not the upload succeeded.
     - name: Run the backup
       block:
         - name: Estimate the size of the data to back up
@@ -56,25 +64,6 @@
               {{ backup_fs.stdout_lines[-1] | trim | int }} available.
             quiet: true
 
-        - name: Configure rclone for OVH Object Storage (Swift)
-          copy:
-            dest: /root/.config/rclone/rclone.conf
-            content: |
-              [ovh]
-              type = swift
-              env_auth = false
-              auth_version = 3
-              auth = {{ swift_auth }}
-              user = {{ swift_user }}
-              key = {{ swift_key }}
-              tenant_id = {{ swift_tenant_id }}
-              domain = default
-              tenant_domain = default
-              region = {{ swift_region }}
-              endpoint_type = public
-            mode: '0600'
-          no_log: true
-
         - name: Create the backup archive
           shell: >
             tar
@@ -84,16 +73,12 @@
 
         - name: Upload the archive to Object Storage
           command: rclone copyto {{ backup_archive.path }} ovh:{{ backup_bucket }}/{{ backup_filename }}
+          environment: "{{ rclone_env }}"
 
         - name: Confirm the backup
           debug:
             msg: "Backup completed: {{ backup_filename }} uploaded to {{ backup_bucket }}"
       always:
-        - name: Remove the rclone credentials (regenerated every run)
-          file:
-            path: /root/.config/rclone/rclone.conf
-            state: absent
-
         - name: Remove the local temporary archive
           file:
             path: "{{ backup_archive.path }}"

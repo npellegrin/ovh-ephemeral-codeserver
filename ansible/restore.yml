@@ -6,17 +6,28 @@
     - group_vars/vars.yml
     - group_vars/vault.yml
 
+  vars:
+    # rclone reads a whole remote definition from the environment, so the Swift
+    # credentials never land in a config file on the instance. Applied only to
+    # the tasks that talk to Object Storage.
+    rclone_env:
+      RCLONE_CONFIG_OVH_TYPE: swift
+      RCLONE_CONFIG_OVH_ENV_AUTH: "false"
+      RCLONE_CONFIG_OVH_AUTH_VERSION: "3"
+      RCLONE_CONFIG_OVH_AUTH: "{{ swift_auth }}"
+      RCLONE_CONFIG_OVH_USER: "{{ swift_user }}"
+      RCLONE_CONFIG_OVH_KEY: "{{ swift_key }}"
+      RCLONE_CONFIG_OVH_TENANT_ID: "{{ swift_tenant_id }}"
+      RCLONE_CONFIG_OVH_DOMAIN: default
+      RCLONE_CONFIG_OVH_TENANT_DOMAIN: default
+      RCLONE_CONFIG_OVH_REGION: "{{ swift_region }}"
+      RCLONE_CONFIG_OVH_ENDPOINT_TYPE: public
+
   tasks:
     - name: Install rclone
       apt:
         name: rclone
         state: present
-
-    - name: Ensure the rclone config directory exists
-      file:
-        path: /root/.config/rclone
-        state: directory
-        mode: '0700'
 
     - name: Create a temp file for the downloaded archive
       tempfile:
@@ -24,33 +35,14 @@
         suffix: .tar.gz
       register: restore_archive
 
-    # The rclone config holds the Swift credentials; it is rewritten on
-    # every run, so the always block wipes it (and the archive) afterwards.
+    # The always block removes the archive whether or not the restore succeeded.
     - name: Run the restore
       block:
-        - name: Configure rclone for OVH Object Storage (Swift)
-          copy:
-            dest: /root/.config/rclone/rclone.conf
-            content: |
-              [ovh]
-              type = swift
-              env_auth = false
-              auth_version = 3
-              auth = {{ swift_auth }}
-              user = {{ swift_user }}
-              key = {{ swift_key }}
-              tenant_id = {{ swift_tenant_id }}
-              domain = default
-              tenant_domain = default
-              region = {{ swift_region }}
-              endpoint_type = public
-            mode: '0600'
-          no_log: true
-
         # rc=3 / "directory not found" means the container has no backups yet
         # (first run); anything else is a real error.
         - name: List the backups
           command: rclone lsf ovh:{{ backup_bucket }}/ --files-only
+          environment: "{{ rclone_env }}"
           register: backup_list
           changed_when: false
           failed_when:
@@ -74,6 +66,7 @@
           block:
             - name: Download the latest backup
               command: rclone copyto ovh:{{ backup_bucket }}/{{ latest_backup }} {{ restore_archive.path }}
+              environment: "{{ rclone_env }}"
 
             - name: Deploy the safe extraction script
               template:
@@ -102,11 +95,6 @@
               debug:
                 msg: "Restoration completed from {{ latest_backup }}"
       always:
-        - name: Remove the rclone credentials (regenerated every run)
-          file:
-            path: /root/.config/rclone/rclone.conf
-            state: absent
-
         - name: Remove the downloaded archive
           file:
             path: "{{ restore_archive.path }}"

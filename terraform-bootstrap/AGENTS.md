@@ -11,11 +11,13 @@ attaches instances directly to Ext-Net instead.
 
 - Never add a `terraform destroy`-triggering change without flagging it
   explicitly in the response. This state must not be casually destroyed.
-- `openstack` handles compute/network/storage. `ovh` is allowed here only
-  for Public Cloud project user/IAM (`ovh_cloud_project_user`,
-  `ovh_cloud_project_user_s3_credential`): a project-scoped OpenStack token
-  can't manage users/roles, and these are persistent. Account-level `ovh`
-  resources (DNS, etc.) belong in `terraform-ephemeral/`.
+- `openstack` handles compute/network/storage. The backup user
+  (`ovh_cloud_project_user`) lives in `terraform-ephemeral/` instead, even
+  though it's an IAM resource: recreating it every cycle is what rotates
+  its credential. `ovh` stays a required provider here only so the next
+  apply can destroy the copy left in this stack's state (see
+  `providers.tf`); drop it once that's done, unless something persistent
+  needs it again.
 - Don't touch `backend.tfvars` credentials logic, only bucket/endpoint/
   region values. Never inline secrets.
 - Don't read `.terraform/`, `*.tfstate*`, `.terraform.lock.hcl`.

@@ -1,6 +1,6 @@
 # Consumed automatically: `make` reads these into terraform-ephemeral's
-# generated.tfvars (see the Makefile) and ansible/group_vars/vault.yml
-# still needs the s3/backup_* ones copied in by hand (see README).
+# generated.tfvars and ansible/group_vars/vars.yml (see the Makefile's
+# generate-ephemeral-vars / generate-vault-vars targets).
 
 output "ovh_project_id" {
   description = "Echoed back so terraform-ephemeral doesn't need it typed twice."
@@ -26,17 +26,6 @@ output "swift_region" {
 output "swift_tenant_id" {
   description = "OpenStack project (tenant) id, used for Keystone v3 auth."
   value       = var.ovh_project_id
-}
-
-output "swift_username" {
-  description = "Backup user's OpenStack username."
-  value       = ovh_cloud_project_user.backup_user.username
-}
-
-output "swift_password" {
-  description = "Backup user's OpenStack password."
-  value       = ovh_cloud_project_user.backup_user.password
-  sensitive   = true
 }
 
 output "keypair_name" {

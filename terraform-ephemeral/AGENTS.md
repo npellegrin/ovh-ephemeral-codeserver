@@ -14,10 +14,19 @@ Destroyed and recreated daily.
   dedicated security group is active.
 - Any resource here must be safe to destroy without data loss. State-
   holding resources belong in `terraform-bootstrap/`.
-- `ovh` provider is allowed here only for DNS records. Gated behind
-  `manage_dns` (default `false`); when off, `make create` pauses for a
-  manual DNS update before Ansible. `dns_subdomain` + `dns_zone` must
-  resolve to ansible's `domain_name`.
+- `ovh` provider is used for two things: DNS records (gated behind
+  `manage_dns`, default `false`; when off, `make create` pauses for a
+  manual DNS update before Ansible; `dns_subdomain` + `dns_zone` must
+  resolve to ansible's `domain_name`) and the backup user
+  (`ovh_cloud_project_user` in `iam.tf`, unconditional). The backup user
+  lives here rather than in terraform-bootstrap so its credential rotates
+  every create/destroy cycle instead of living forever: a project-scoped
+  OpenStack token can't manage users/roles, so it still goes through
+  OVH's project-user API, not raw OpenStack Identity.
+- `iam.tf`'s outputs (`swift_username`, `swift_password`) are only valid
+  after `terraform apply`. The Makefile's `generate-swift-vars` target
+  reads them and can't be a prerequisite of `create` the way
+  `generate-vault-vars` is; it must run after `terraform apply`.
 - Don't read `.terraform/`, `*.tfstate*`, `.terraform.lock.hcl`.
 - Output values consumed by Ansible (`public_ipv4`, etc.) must stay stable
   in name and type: inventory generation depends on them.
