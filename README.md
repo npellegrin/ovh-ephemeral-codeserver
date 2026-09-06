@@ -1,117 +1,143 @@
-# OVH Cloud Dev Environment
+# ☁️ OVH Cloud Dev Environment
 
-A code-server (VS Code in the browser) instance on OVH Public Cloud that
-you spin up to work and tear down when done, backing up your data to
-Object Storage in between. See [ARCHITECTURE.md](ARCHITECTURE.md) for the
-why behind each design choice.
+A **code-server** (VS Code in the browser) instance on OVH Public Cloud that you can spin up to work and tear down when done. It automatically backs up your data to Object Storage between sessions.
 
-## Features
+> 💡 **Note:** See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the reasoning behind each design choice.
 
-- **code-server**: Code in the browser, pinned version + checksum verification
-- **HTTPS**: nginx reverse proxy + Let's Encrypt certificate
-- **Dual-stack IPv4 + IPv6**: Terraform management of the OVH DNS `A`/`AAAA` records
-- **IP filtering**: nftables allowlists per port (SSH/HTTP/HTTPS)
-- **Hardening**: SSH key-only, fail2ban on SSH and code-server login, nginx rate-limit on `/login`, unattended security upgrades, sysctl tightening, rare-protocol module blacklist.
-- **Ephemeral lifecycle**: `make create` / `make destroy`; the instance and public IPs are recreated each cycle
-- **Backup / restore**: `tar` to OVH Object Storage. Runs automatically on `create` (restore) and `destroy` (backup) Makefile targets.
-- **Secrets**: non-secret in `group_vars/vars.yml`, secrets in an Ansible Vault-encrypted `group_vars/vault.yml`.
-- **Optional dev tooling**: Ansible `customization` role ships dev tools with feature-toggling from `group_vars/vars.yml`
+---
 
-## Setup
+## ✨ Features
 
-Prerequisites: Terraform >= 1.5, Ansible >= 2.15, an OVH Public Cloud
-project, a domain name, a local SSH keypair.
+### 🛠 Core
 
-1. **SSH key**: `ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519`
+- **code-server:** Code directly in your browser (pinned version + checksum verification).
+- **Ephemeral Lifecycle:** Use `make create` and `make destroy`. The instance and public IPs are freshly recreated each cycle.
+- **Backup & Restore:** Automatically runs `tar` to OVH Object Storage on `create` (restore) and `destroy` (backup).
+- **Optional Dev Tooling:** Use the Ansible `customization` role to ship dev tools with feature-toggling via `group_vars/vars.yml`.
 
-2. **OVH credentials** (see ARCHITECTURE.md for why there are three):
-   - OpenStack user: Manager → Public Cloud → project → Users & Roles →
-     create a user, e.g. `Administrator` role.
-   - API app credentials for the `ovh` provider:
-     https://api.ovh.com/createToken/, rights on `/cloud/project/*` (plus
-     `GET/POST/PUT/DELETE /domain/zone/*` if `manage_dns = true`). Scope
-     tighter by replacing `*` with `<projectId>` / `<zone>` and
-     `<projectId>/*` / `<zone>/*`.
-   - S3 credentials for the Terraform state bucket: Manager → Public Cloud
-     → project → Storage → Object Storage → Users tab.
+### 🔒 Security & Hardening
 
-   Export them (or use `~/.ovh.conf` for the `ovh` ones):
-   ```bash
-   export OS_USERNAME="..." OS_PASSWORD="..." OS_USER_DOMAIN_NAME="Default"
-   export OVH_ENDPOINT="ovh-eu" OVH_APPLICATION_KEY="..." OVH_APPLICATION_SECRET="..." OVH_CONSUMER_KEY="..."
-   export AWS_ACCESS_KEY_ID="..." AWS_SECRET_ACCESS_KEY="..."
-   ```
+- **HTTPS:** Secured with an Nginx reverse proxy and Let's Encrypt certificates.
+- **IP Filtering:** `nftables` allowlists per port (SSH / HTTP / HTTPS).
+- **System Hardening:**:
+  - SSH key-only authentication.
+  - `fail2ban` on SSH and code-server logins.
+  - Nginx rate-limiting on the `/login` route.
+  - Unattended security upgrades, `sysctl` tightening, and rare-protocol module blacklisting.
+- **Secrets Management:** Secrets are safely stored in an Ansible Vault-encrypted file (`group_vars/vault.yml`), while non-secrets live in `group_vars/vars.yml`.
 
-3. **Terraform state bucket**: create one manually in Object Storage.
+### 🌐 Networking
 
-4. **Bootstrap** (once):
-   ```bash
-   cd terraform-bootstrap
-   cp backend.tfvars.example backend.tfvars      # fill in your state bucket
-   cp terraform.tfvars.example terraform.tfvars  # fill in ovh_project_id, ssh key path
-   cd .. && make bootstrap
-   ```
+- **Dual-stack IPv4 + IPv6:** Terraform manages your OVH DNS `A` and `AAAA` records automatically.
 
-5. **Ephemeral config**:
-   ```bash
-   cd terraform-ephemeral
-   cp backend.tfvars.example backend.tfvars      # same state bucket, different key
-   cp terraform.tfvars.example terraform.tfvars  # adjust variables after copy
-   cd ..
-   ```
+---
 
-6. **Ansible config and secrets**:
-   ```bash
-   cp ansible/group_vars/vars.yml.example ansible/group_vars/vars.yml
-   # fill in domain_name, letsencrypt_email, backup_paths, backup_excludes (plaintext, gitignored)
-   cp ansible/group_vars/vault.yml.example ansible/group_vars/vault.yml
-   # fill in the manual secrets, then encrypt:
-   ansible-vault encrypt ansible/group_vars/vault.yml
-   read -s -p "Vault password: " PASS && echo && printf '%s' "$PASS" > .vault_pass && chmod 600 .vault_pass && unset PASS
-   ```
+## 🚀 Setup
 
-7. **Run it**:
-   ```bash
-   make create    # provision instance, restore last backup, ready to work
-   make destroy   # backup current state, destroy instance
-   ```
+### Prerequisites
 
-8. **Connect**: `make create` generates a fresh code-server password every
-   run and stores it in the vault. To get your credentials:
-   ```bash
-   make code-server-url       # prints https://<domain_name>/
-   make code-server-password  # prints the password (pipe it to a clipboard tool)
-   ```
+Before you begin, ensure you have the following:
 
-## Troubleshooting
+- **Terraform** >= 1.5
+- **Ansible** >= 2.15
+- An **OVH Public Cloud** project
+- A **domain name**
+- A **local SSH keypair** (e.g., `ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519`)
 
-- **"No suitable endpoint could be found in the service catalog"**:
-  `compute_region`/`object_storage_region` (terraform-bootstrap) use
-  different naming (`GRA11` vs `GRA`); check yours matches what your OVH
-  project actually has.
-- **`OverQuota` on `security_group`**: new OVH accounts get quota 0.
-  Leave `create_security_group = false` (the default) or add a payment
-  method to raise the quota.
-- **"Neither a boot device, image ID, or image name..."**: `instance_image`
-  must exactly match an active image name for your region.
-- **Let's Encrypt fails on `make create`**: the public IPv4/IPv6 change
-  every cycle; your DNS A/AAAA records must point at the new ones before
-  Ansible reaches the nginx role. Use `manage_dns = true` or update them
-  during the pause. If only IPv6 is broken, remove the AAAA (Let's Encrypt
-  prefers it).
-- **`make` keeps asking for the vault password**: create `.vault_pass`
-  (step 6 above).
-- **`OVHcloud API error (status code 403) ... not been granted` on DNS**:
-  your API token lacks `/domain/zone/*` rights; recreate it (step 2) or
-  set `manage_dns = false`.
+### 1. OVH Credentials
 
-## License
+You will need three sets of credentials (see `ARCHITECTURE.md` for details). Export them in your terminal (or use `~/.ovh.conf` for the OVH API):
 
-GNU Affero General Public License v3.0. See [LICENSE](LICENSE).
+```bash
+# 1. OpenStack User (Manager → Public Cloud → Project → Users & Roles → Create user)
+export OS_USERNAME="..."
+export OS_PASSWORD="..."
+export OS_USER_DOMAIN_NAME="Default"
 
-This program is free software: you can redistribute it and/or modify it
-under the terms of the GNU Affero General Public License as published by
-the Free Software Foundation, either version 3 of the License, or (at your
-option) any later version. It is distributed WITHOUT ANY WARRANTY; without
-even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-PURPOSE. See the license for details.
+# 2. OVH API App (https://api.ovh.com/createToken/)
+# Rights: /cloud/project/* (and GET/POST/PUT/DELETE /domain/zone/* if manage_dns = true)
+export OVH_ENDPOINT="ovh-eu"
+export OVH_APPLICATION_KEY="..."
+export OVH_APPLICATION_SECRET="..."
+export OVH_CONSUMER_KEY="..."
+
+# 3. S3 Credentials (for Terraform state: Manager → Public Cloud → Project → Storage → Object Storage → Users tab)
+export AWS_ACCESS_KEY_ID="..."
+export AWS_SECRET_ACCESS_KEY="..."
+```
+
+### 2. Terraform State Bucket
+
+Create an Object Storage bucket manually via the OVH Manager to store your Terraform state.
+
+### 3. Bootstrap (Run Once)
+
+```bash
+cd terraform-bootstrap
+cp backend.tfvars.example backend.tfvars      # Fill in your state bucket name
+cp terraform.tfvars.example terraform.tfvars  # Fill in ovh_project_id and ssh key path
+cd .. && make bootstrap
+```
+
+### 4. Ephemeral Config
+
+```bash
+cd terraform-ephemeral
+cp backend.tfvars.example backend.tfvars      # Use the same state bucket, but a different key
+cp terraform.tfvars.example terraform.tfvars  # Adjust your variables as needed
+cd ..
+```
+
+### 5. Ansible Config & Secrets
+
+```bash
+# 1. Setup variables
+cp ansible/group_vars/vars.yml.example ansible/group_vars/vars.yml
+# Edit vars.yml: add domain_name, letsencrypt_email, backup_paths, backup_excludes
+
+# 2. Setup secrets
+cp ansible/group_vars/vault.yml.example ansible/group_vars/vault.yml
+# Fill in the manual secrets inside vault.yml, then encrypt it:
+ansible-vault encrypt ansible/group_vars/vault.yml
+
+# 3. Save your vault password securely
+read -s -p "Vault password: " PASS && echo && printf '%s' "$PASS" > .vault_pass && chmod 600 .vault_pass && unset PASS
+```
+
+### 6. Usage
+
+```bash
+make create    # Provisions the instance, restores the last backup, and is ready to use
+make destroy   # Backs up the current state and destroys the instance
+```
+
+### 7. Connect
+
+`make create` generates a fresh code-server password on every run and stores it in the Ansible vault. To retrieve your credentials:
+
+```bash
+make code-server-url       # Prints https://<domain_name>/
+make code-server-password  # Prints the password (pipe it to your clipboard)
+```
+
+---
+
+## ⚠️ Troubleshooting
+
+| Error / Issue | Solution |
+| ------------- | -------- |
+| **"No suitable endpoint could be found in the service catalog"** | `compute_region` / `object_storage_region` use different naming conventions (e.g., `GRA11` vs `GRA`). Ensure they match what your OVH project actually uses. |
+| **`OverQuota` on `security_group`** | New OVH accounts often have a quota of 0. Leave `create_security_group = false` (default) or add a payment method to raise your quota. |
+| **"Neither a boot device, image ID, or image name..."** | `instance_image` must exactly match an **active** image name for your region. |
+| **Let's Encrypt fails on `make create`** | Public IPs change every cycle. Your DNS records must update before Ansible runs the nginx role. Use `manage_dns = true` or update manually. *(Tip: If only IPv6 fails, remove the AAAA record).* |
+| **`make` keeps asking for the vault password** | Make sure you created the `.vault_pass` file (see Step 5). |
+| **`OVHcloud API error (403) ... not been granted` on DNS** | Your API token lacks `/domain/zone/*` rights. Recreate the token or set `manage_dns = false`. |
+
+---
+
+## 📄 License
+
+**GNU Affero General Public License v3.0**
+See the [LICENSE](LICENSE) file for details.
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. It is distributed WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
