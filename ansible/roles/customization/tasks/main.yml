@@ -1,6 +1,14 @@
 ---
-# Dispatcher for the optional dev tooling. One task file per tool, included only
-# when its customization_* flag is true (all default false, see defaults/main.yml).
+# Dispatcher for the optional dev tooling.
+
+# Most tools below install into the dev user's home with become_user, and that
+# needs setfacl to hand Ansible's temp files over. Debian's cloud image has no
+# acl package so installing it.
+- name: Install acl, required by the become_user tasks in this role
+  apt:
+    name: acl
+    state: present
+
 - name: Set up the Terraform plugin cache
   include_tasks: terraform_plugin_cache.yml
   when: customization_terraform_plugin_cache | bool
